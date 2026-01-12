@@ -1,4 +1,5 @@
 import Image from "next/image";
+import {Button} from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -59,6 +60,11 @@ export default function Home() {
             Documentation
           </a>
         </div>
+          <h1 className="text-3xl font-bold">
+            Next.js + Spring Boot E-Shop
+          </h1>
+
+          <Button>Shadcn Button</Button>
       </main>
     </div>
   );
