@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: eshop-postgres
+    environment:
+      POSTGRES_DB: eshop
+      POSTGRES_USER: eshop
+      POSTGRES_PASSWORD: eshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - eshop_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eshop -d eshop"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  eshop_pg:
