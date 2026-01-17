@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { mockProducts } from "@/features/products/products.mock";
+import { getProduct } from "@/lib/api";
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -8,8 +8,7 @@ type Props = {
 
 export default async function ProductDetailsPage({ params }: Props) {
     const { id } = await params;
-
-    const product = mockProducts.find((p) => p.id === id);
+    const product = await getProduct(id);
 
     if (!product) {
         return (

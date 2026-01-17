@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
 type Props = {
-    id: string;
+    id: number;
     title: string;
     price: number;
     image: string;

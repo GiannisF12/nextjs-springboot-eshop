@@ -16,5 +16,34 @@ services:
       timeout: 5s
       retries: 20
 
+  backend:
+    build:
+      context: ./backend
+    container_name: eshop-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eshop
+      SPRING_DATASOURCE_USERNAME: eshop
+      SPRING_DATASOURCE_PASSWORD: eshop
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+      SPRING_SQL_INIT_MODE: always
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: eshop-frontend
+    depends_on:
+      - backend
+    environment:
+      API_INTERNAL_BASE_URL: http://backend:8080
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+
 volumes:
   eshop_pg:
