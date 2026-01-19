@@ -25,6 +25,7 @@ public class Product {
     @Column(nullable = false)
     private String image;
 
-    @Column(nullable = false)
-    private String category;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 }
