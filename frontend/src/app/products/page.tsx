@@ -1,10 +1,15 @@
 import Link from "next/link";
-import { getProducts } from "@/lib/api";
 import { ProductCard } from "@/features/products/product-card";
 import { Button } from "@/components/ui/button";
 import { ProductsControls } from "./products-controls";
+import { getCategories, getProducts } from "@/lib/api";
 
-type SP = { page?: string; size?: string; sort?: string };
+type SP = {
+    page?: string;
+    size?: string;
+    sort?: string;
+    categoryId?: string;
+};
 
 type Props = {
     searchParams?: Promise<SP>;
@@ -14,13 +19,24 @@ function clamp(n: number, min: number, max: number) {
     return Math.min(max, Math.max(min, n));
 }
 
-function buildHref(page: number, size: number, sort: string) {
-    return `/products?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`;
+function buildHref(page: number, size: number, sort: string, categoryId?: number) {
+    const sp = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        sort,
+    });
+
+    if (typeof categoryId === "number") {
+        sp.set("categoryId", String(categoryId));
+    }
+
+    return `/products?${sp.toString()}`;
 }
 
 function pageRange(current: number, totalPages: number, windowSize = 5) {
     if (totalPages <= 0) return [];
     const half = Math.floor(windowSize / 2);
+
     let start = Math.max(0, current - half);
     const end = Math.min(totalPages - 1, start + windowSize - 1);
     start = Math.max(0, end - windowSize + 1);
@@ -37,7 +53,16 @@ export default async function ProductsPage({ searchParams }: Props) {
     const sort = (sp.sort ?? "id,asc").toString();
     const requestedPage = Math.max(0, Number(sp.page ?? "0") || 0);
 
-    const data = await getProducts(requestedPage, size, sort);
+    const categoryIdRaw = sp.categoryId;
+    const categoryId =
+        categoryIdRaw && !Number.isNaN(Number(categoryIdRaw))
+            ? Number(categoryIdRaw)
+            : undefined;
+
+    const [data, categories] = await Promise.all([
+        getProducts(requestedPage, size, sort, categoryId),
+        getCategories(),
+    ]);
 
     const current = clamp(data.number, 0, Math.max(0, data.totalPages - 1));
     const canPrev = current > 0;
@@ -55,7 +80,12 @@ export default async function ProductsPage({ searchParams }: Props) {
                     </p>
                 </div>
 
-                <ProductsControls currentSize={size} currentSort={sort} />
+                <ProductsControls
+                    currentSize={size}
+                    currentSort={sort}
+                    currentCategoryId={categoryId}
+                    categories={categories}
+                />
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +102,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                     <Button asChild variant="secondary" disabled={!canPrev}>
                         <Link
-                            href={buildHref(current - 1, size, sort)}
+                            href={buildHref(current - 1, size, sort, categoryId)}
                             aria-disabled={!canPrev}
                             tabIndex={!canPrev ? -1 : 0}
                         >
@@ -83,7 +113,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     {current > 2 && data.totalPages > 5 && (
                         <>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={buildHref(0, size, sort)}>1</Link>
+                                <Link href={buildHref(0, size, sort, categoryId)}>1</Link>
                             </Button>
                             <span className="px-1 text-muted-foreground">…</span>
                         </>
@@ -98,7 +128,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                                 variant={isActive ? "default" : "outline"}
                                 size="sm"
                             >
-                                <Link href={buildHref(p, size, sort)}>{p + 1}</Link>
+                                <Link href={buildHref(p, size, sort, categoryId)}>{p + 1}</Link>
                             </Button>
                         );
                     })}
@@ -107,7 +137,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                         <>
                             <span className="px-1 text-muted-foreground">…</span>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={buildHref(data.totalPages - 1, size, sort)}>
+                                <Link href={buildHref(data.totalPages - 1, size, sort, categoryId)}>
                                     {data.totalPages}
                                 </Link>
                             </Button>
@@ -116,7 +146,7 @@ export default async function ProductsPage({ searchParams }: Props) {
 
                     <Button asChild variant="secondary" disabled={!canNext}>
                         <Link
-                            href={buildHref(current + 1, size, sort)}
+                            href={buildHref(current + 1, size, sort, categoryId)}
                             aria-disabled={!canNext}
                             tabIndex={!canNext ? -1 : 0}
                         >

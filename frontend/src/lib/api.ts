@@ -28,6 +28,12 @@ export type Page<T> = {
     number: number;
 };
 
+export type Category = {
+    id: number;
+    name: string;
+};
+
+
 function toProduct(p: ProductResponse): Product {
     return {
         id: p.id,
@@ -41,12 +47,24 @@ function toProduct(p: ProductResponse): Product {
 export async function getProducts(
     page = 0,
     size = 12,
-    sort = "id,asc"
+    sort = "id,asc",
+    categoryId?: number
 ): Promise<Page<Product>> {
+    const params = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        sort,
+    });
+
+    if (typeof categoryId === "number") {
+        params.set("categoryId", String(categoryId));
+    }
+
     const res = await fetch(
-        `${API_INTERNAL_BASE_URL}/api/products?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`,
+        `${API_INTERNAL_BASE_URL}/api/products?${params.toString()}`,
         { cache: "no-store" }
     );
+
     if (!res.ok) throw new Error("Failed to fetch products");
 
     const data: Page<ProductResponse> = await res.json();
@@ -58,10 +76,22 @@ export async function getProducts(
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/products/${id}`, { cache: "no-store" });
+    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/products/${id}`, {
+        cache: "no-store",
+    });
+
     if (res.status === 404) return null;
     if (!res.ok) throw new Error("Failed to fetch product");
 
     const p: ProductResponse = await res.json();
     return toProduct(p);
+}
+
+export async function getCategories(): Promise<Category[]> {
+    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/categories`, {
+        cache: "no-store",
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch categories");
+    return res.json();
 }

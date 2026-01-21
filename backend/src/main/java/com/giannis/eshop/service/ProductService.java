@@ -21,8 +21,9 @@ public class ProductService {
     private final ProductRepository repository;
     private final CategoryRepository categoryRepository;
 
-    public Page<ProductResponse> findAll(Pageable pageable) {
-        return repository.findAllWithCategory(pageable).map(this::toResponse);
+    public Page<ProductResponse> findAll(Long categoryId, Pageable pageable) {
+        return repository.findAllWithCategoryFiltered(categoryId, pageable)
+                .map(this::toResponse);
     }
 
     public ProductResponse findById(Long id) {

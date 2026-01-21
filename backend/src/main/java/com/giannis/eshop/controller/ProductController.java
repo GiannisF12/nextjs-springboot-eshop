@@ -22,9 +22,11 @@ public class ProductController {
     private final ProductService service;
 
     @GetMapping
-    public Page<ProductResponse> findAll(Pageable pageable) {
-        System.out.println("HIT ProductController.findAll pageable=" + pageable);
-        return service.findAll(pageable);
+    public Page<ProductResponse> findAll(
+            @RequestParam(required = false) Long categoryId,
+            Pageable pageable
+    ) {
+        return service.findAll(categoryId, pageable);
     }
 
     @GetMapping("/{id}")
