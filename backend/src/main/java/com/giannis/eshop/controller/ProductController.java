@@ -1,5 +1,6 @@
 package com.giannis.eshop.controller;
 
+import com.giannis.eshop.dto.PageResponse;
 import com.giannis.eshop.dto.ProductResponse;
 import com.giannis.eshop.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +23,20 @@ public class ProductController {
     private final ProductService service;
 
     @GetMapping
-    public Page<ProductResponse> findAll(
+    public PageResponse<ProductResponse> findAll(
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String q,
             Pageable pageable
     ) {
-        return service.findAll(categoryId, pageable);
+        var page = service.findAll(categoryId, q, pageable);
+
+        return new PageResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages()
+        );
     }
 
     @GetMapping("/{id}")

@@ -21,9 +21,22 @@ public class ProductService {
     private final ProductRepository repository;
     private final CategoryRepository categoryRepository;
 
-    public Page<ProductResponse> findAll(Long categoryId, Pageable pageable) {
-        return repository.findAllWithCategoryFiltered(categoryId, pageable)
-                .map(this::toResponse);
+    public Page<ProductResponse> findAll(Long categoryId, String q, Pageable pageable) {
+        String query = (q == null || q.isBlank()) ? null : q.trim();
+
+        Page<Product> page;
+
+        if (categoryId == null && query == null) {
+            page = repository.findAll(pageable);
+        } else if (categoryId != null && query == null) {
+            page = repository.findByCategory_Id(categoryId, pageable);
+        } else if (categoryId == null) { // query != null
+            page = repository.findByTitleContainingIgnoreCase(query, pageable);
+        } else { // categoryId != null && query != null
+            page = repository.findByCategory_IdAndTitleContainingIgnoreCase(categoryId, query, pageable);
+        }
+
+        return page.map(this::toResponse);
     }
 
     public ProductResponse findById(Long id) {

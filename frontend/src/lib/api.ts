@@ -48,7 +48,8 @@ export async function getProducts(
     page = 0,
     size = 12,
     sort = "id,asc",
-    categoryId?: number
+    categoryId?: number,
+    q?: string
 ): Promise<Page<Product>> {
     const params = new URLSearchParams({
         page: String(page),
@@ -56,14 +57,12 @@ export async function getProducts(
         sort,
     });
 
-    if (typeof categoryId === "number") {
-        params.set("categoryId", String(categoryId));
-    }
+    if (typeof categoryId === "number") params.set("categoryId", String(categoryId));
+    if (q && q.trim().length > 0) params.set("q", q.trim());
 
-    const res = await fetch(
-        `${API_INTERNAL_BASE_URL}/api/products?${params.toString()}`,
-        { cache: "no-store" }
-    );
+    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/products?${params.toString()}`, {
+        cache: "no-store",
+    });
 
     if (!res.ok) throw new Error("Failed to fetch products");
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import type { Category } from "@/lib/api";
+
 import {
     Select,
     SelectContent,
@@ -11,6 +13,7 @@ import {
 } from "@/components/ui/select";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -29,6 +32,7 @@ type Props = {
     currentSort: string;
     currentCategoryId?: number;
     categories: Category[];
+    currentQuery: string;
 };
 
 export function ProductsControls({
@@ -36,11 +40,25 @@ export function ProductsControls({
                                      currentSort,
                                      currentCategoryId,
                                      categories,
+                                     currentQuery,
                                  }: Props) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    function go(next: { page?: number; size?: number; sort?: string; categoryId?: number }) {
+    const [query, setQuery] = useState(currentQuery);
+
+    // Keep input in sync when URL changes (e.g., back/forward navigation)
+    useEffect(() => {
+        setQuery(currentQuery);
+    }, [currentQuery]);
+
+    function go(next: {
+        page?: number;
+        size?: number;
+        sort?: string;
+        categoryId?: number;
+        q?: string;
+    }) {
         const sp = new URLSearchParams(searchParams.toString());
 
         if (typeof next.page === "number") sp.set("page", String(next.page));
@@ -49,6 +67,12 @@ export function ProductsControls({
 
         if (typeof next.categoryId === "number") {
             sp.set("categoryId", String(next.categoryId));
+        }
+
+        if (typeof next.q === "string") {
+            const trimmed = next.q.trim();
+            if (trimmed.length === 0) sp.delete("q");
+            else sp.set("q", trimmed);
         }
 
         router.push(`/products?${sp.toString()}`);
@@ -61,36 +85,95 @@ export function ProductsControls({
         router.push(`/products?${sp.toString()}`);
     }
 
+    function clearSearch() {
+        setQuery("");
+        go({ page: 0, q: "" });
+    }
+
     const activeCategory =
         typeof currentCategoryId === "number"
             ? categories.find((c) => c.id === currentCategoryId)
             : undefined;
 
-    return (
-        <div className="flex flex-col gap-2">
-            {/* Active category chip */}
-            {activeCategory && (
-                <div className="flex items-center gap-2">
-                    <div className="text-xs text-muted-foreground">Active filter:</div>
+    const hasSearch = currentQuery.trim().length > 0;
 
-                    <div className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
-                        <span>{activeCategory.name}</span>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={clearCategory}
-                            aria-label="Clear category filter"
-                            title="Clear"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
+    return (
+        <div className="flex flex-col gap-3">
+            {/* Active chips */}
+            {(activeCategory || hasSearch) && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-xs text-muted-foreground">Active filters:</div>
+
+                    {activeCategory && (
+                        <div className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
+                            <span>{activeCategory.name}</span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={clearCategory}
+                                aria-label="Clear category filter"
+                                title="Clear category"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {hasSearch && (
+                        <div className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
+                            <span>“{currentQuery}”</span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={clearSearch}
+                                aria-label="Clear search"
+                                title="Clear search"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Controls row */}
+            {/* Search */}
+            <form
+                className="flex w-full items-end gap-2"
+                onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                    e.preventDefault();
+                    go({ page: 0, q: query });
+                }}
+            >
+                <div className="w-full sm:w-80">
+                    <div className="mb-1 text-xs text-muted-foreground">Search</div>
+                    <Input
+                        value={query}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+                        placeholder="Search by title (e.g. Nike)"
+                    />
+                </div>
+
+                <Button type="submit" variant="secondary">
+                    Search
+                </Button>
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={clearSearch}
+                    aria-label="Clear search input"
+                    title="Clear"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </form>
+
+            {/* Dropdowns */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 {/* Category */}
                 <div className="w-full sm:w-56">

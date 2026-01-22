@@ -9,6 +9,7 @@ type SP = {
     size?: string;
     sort?: string;
     categoryId?: string;
+    q?: string;
 };
 
 type Props = {
@@ -19,16 +20,21 @@ function clamp(n: number, min: number, max: number) {
     return Math.min(max, Math.max(min, n));
 }
 
-function buildHref(page: number, size: number, sort: string, categoryId?: number) {
+function buildHref(
+    page: number,
+    size: number,
+    sort: string,
+    categoryId?: number,
+    q?: string
+) {
     const sp = new URLSearchParams({
         page: String(page),
         size: String(size),
         sort,
     });
 
-    if (typeof categoryId === "number") {
-        sp.set("categoryId", String(categoryId));
-    }
+    if (typeof categoryId === "number") sp.set("categoryId", String(categoryId));
+    if (q && q.trim().length > 0) sp.set("q", q.trim());
 
     return `/products?${sp.toString()}`;
 }
@@ -59,8 +65,10 @@ export default async function ProductsPage({ searchParams }: Props) {
             ? Number(categoryIdRaw)
             : undefined;
 
+    const q = (sp.q ?? "").toString().trim();
+
     const [data, categories] = await Promise.all([
-        getProducts(requestedPage, size, sort, categoryId),
+        getProducts(requestedPage, size, sort, categoryId, q),
         getCategories(),
     ]);
 
@@ -85,14 +93,21 @@ export default async function ProductsPage({ searchParams }: Props) {
                     currentSort={sort}
                     currentCategoryId={categoryId}
                     categories={categories}
+                    currentQuery={q}
                 />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {data.content.map((p) => (
-                    <ProductCard key={p.id} {...p} />
-                ))}
-            </div>
+            {data.content.length === 0 ? (
+                <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
+                    No products found.
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {data.content.map((p) => (
+                        <ProductCard key={p.id} {...p} />
+                    ))}
+                </div>
+            )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
@@ -102,7 +117,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                     <Button asChild variant="secondary" disabled={!canPrev}>
                         <Link
-                            href={buildHref(current - 1, size, sort, categoryId)}
+                            href={buildHref(current - 1, size, sort, categoryId, q)}
                             aria-disabled={!canPrev}
                             tabIndex={!canPrev ? -1 : 0}
                         >
@@ -113,7 +128,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     {current > 2 && data.totalPages > 5 && (
                         <>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={buildHref(0, size, sort, categoryId)}>1</Link>
+                                <Link href={buildHref(0, size, sort, categoryId, q)}>1</Link>
                             </Button>
                             <span className="px-1 text-muted-foreground">…</span>
                         </>
@@ -128,7 +143,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                                 variant={isActive ? "default" : "outline"}
                                 size="sm"
                             >
-                                <Link href={buildHref(p, size, sort, categoryId)}>{p + 1}</Link>
+                                <Link href={buildHref(p, size, sort, categoryId, q)}>{p + 1}</Link>
                             </Button>
                         );
                     })}
@@ -137,7 +152,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                         <>
                             <span className="px-1 text-muted-foreground">…</span>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={buildHref(data.totalPages - 1, size, sort, categoryId)}>
+                                <Link href={buildHref(data.totalPages - 1, size, sort, categoryId, q)}>
                                     {data.totalPages}
                                 </Link>
                             </Button>
@@ -146,7 +161,7 @@ export default async function ProductsPage({ searchParams }: Props) {
 
                     <Button asChild variant="secondary" disabled={!canNext}>
                         <Link
-                            href={buildHref(current + 1, size, sort, categoryId)}
+                            href={buildHref(current + 1, size, sort, categoryId, q)}
                             aria-disabled={!canNext}
                             tabIndex={!canNext ? -1 : 0}
                         >
