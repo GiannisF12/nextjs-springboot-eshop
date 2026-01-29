@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { Category } from "@/lib/api";
 
 import {
@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-    { value: "id,asc", label: "Newest (id ↑)" },
-    { value: "id,desc", label: "Oldest (id ↓)" },
+    { value: "id,desc", label: "Newest" },
+    { value: "id,asc", label: "Oldest" },
     { value: "title,asc", label: "Title (A → Z)" },
     { value: "title,desc", label: "Title (Z → A)" },
     { value: "price,asc", label: "Price (low → high)" },
@@ -52,31 +52,47 @@ export function ProductsControls({
         setQuery(currentQuery);
     }, [currentQuery]);
 
-    function go(next: {
-        page?: number;
-        size?: number;
-        sort?: string;
-        categoryId?: number;
-        q?: string;
-    }) {
-        const sp = new URLSearchParams(searchParams.toString());
+    const go = useCallback(
+        (next: {
+            page?: number;
+            size?: number;
+            sort?: string;
+            categoryId?: number;
+            q?: string;
+        }) => {
+            const sp = new URLSearchParams(searchParams.toString());
 
-        if (typeof next.page === "number") sp.set("page", String(next.page));
-        if (typeof next.size === "number") sp.set("size", String(next.size));
-        if (typeof next.sort === "string") sp.set("sort", next.sort);
+            if (typeof next.page === "number") sp.set("page", String(next.page));
+            if (typeof next.size === "number") sp.set("size", String(next.size));
+            if (typeof next.sort === "string") sp.set("sort", next.sort);
 
-        if (typeof next.categoryId === "number") {
-            sp.set("categoryId", String(next.categoryId));
-        }
+            if (typeof next.categoryId === "number") {
+                sp.set("categoryId", String(next.categoryId));
+            }
 
-        if (typeof next.q === "string") {
-            const trimmed = next.q.trim();
-            if (trimmed.length === 0) sp.delete("q");
-            else sp.set("q", trimmed);
-        }
+            if (typeof next.q === "string") {
+                const trimmed = next.q.trim();
+                if (trimmed.length === 0) sp.delete("q");
+                else sp.set("q", trimmed);
+            }
 
-        router.push(`/products?${sp.toString()}`);
-    }
+            router.push(`/products?${sp.toString()}`);
+        },
+        [router, searchParams]
+    );
+
+    // Debounce search (300ms)
+    useEffect(() => {
+        // If the input already matches the URL query, do nothing
+        if (query.trim() === (currentQuery ?? "").trim()) return;
+
+        const t = setTimeout(() => {
+            go({ page: 0, q: query });
+        }, 300);
+
+        return () => clearTimeout(t);
+    }, [query, currentQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
     function clearCategory() {
         const sp = new URLSearchParams(searchParams.toString());

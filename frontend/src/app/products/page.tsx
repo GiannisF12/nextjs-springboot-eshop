@@ -56,7 +56,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     const sp = (await searchParams) ?? {};
 
     const size = clamp(Number(sp.size ?? "12") || 12, 1, 48);
-    const sort = (sp.sort ?? "id,asc").toString();
+    const sort = (sp.sort ?? "id,desc").toString();
     const requestedPage = Math.max(0, Number(sp.page ?? "0") || 0);
 
     const categoryIdRaw = sp.categoryId;

@@ -47,7 +47,7 @@ function toProduct(p: ProductResponse): Product {
 export async function getProducts(
     page = 0,
     size = 12,
-    sort = "id,asc",
+    sort = "id,desc",
     categoryId?: number,
     q?: string
 ): Promise<Page<Product>> {
