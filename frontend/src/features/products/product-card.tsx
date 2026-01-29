@@ -8,11 +8,14 @@ type Props = {
     price: number;
     image: string;
     category: string;
+    href?: string;
 };
 
-export function ProductCard({ id, title, price, image, category }: Props) {
+export function ProductCard({ id, title, price, image, category, href }: Props) {
+    const link = href ?? `/products/${id}`;
+
     return (
-        <Link href={`/products/${id}`} className="block">
+        <Link href={link} className="block">
             <Card className="overflow-hidden">
                 <div className="aspect-square w-full overflow-hidden bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

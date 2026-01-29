@@ -73,6 +73,9 @@ export default async function ProductsPage({ searchParams }: Props) {
     ]);
 
     const current = clamp(data.number, 0, Math.max(0, data.totalPages - 1));
+    const start = data.totalElements === 0 ? 0 : current * size + 1;
+    const end = Math.min((current + 1) * size, data.totalElements);
+
     const canPrev = current > 0;
     const canNext = current + 1 < data.totalPages;
 
@@ -84,7 +87,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 <div>
                     <h1 className="text-2xl font-semibold">Products</h1>
                     <p className="text-sm text-muted-foreground">
-                        Loaded from Spring Boot API. ({data.totalElements} total)
+                        Showing {start}–{end} of {data.totalElements} products
                     </p>
                 </div>
 
@@ -103,9 +106,31 @@ export default async function ProductsPage({ searchParams }: Props) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {data.content.map((p) => (
-                        <ProductCard key={p.id} {...p} />
-                    ))}
+                    {data.content.map((p) => {
+                        const returnTo = new URLSearchParams({
+                            page: String(current),
+                            size: String(size),
+                            sort,
+                        });
+
+                        if (typeof categoryId === "number") {
+                            returnTo.set("categoryId", String(categoryId));
+                        }
+
+                        if (q) {
+                            returnTo.set("q", q);
+                        }
+
+                        const href = `/products/${p.id}?${returnTo.toString()}`;
+
+                        return (
+                            <ProductCard
+                                key={p.id}
+                                {...p}
+                                href={href}
+                            />
+                        );
+                    })}
                 </div>
             )}
 
