@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { CartBadge } from "@/features/cart/cart-badge";
 
 export function SiteHeader() {
     return (
@@ -13,9 +14,7 @@ export function SiteHeader() {
                     <Button asChild variant="ghost">
                         <Link href="/products">Products</Link>
                     </Button>
-                    <Button asChild variant="ghost">
-                        <Link href="/cart">Cart</Link>
-                    </Button>
+                    <CartBadge />
                 </nav>
             </div>
         </header>

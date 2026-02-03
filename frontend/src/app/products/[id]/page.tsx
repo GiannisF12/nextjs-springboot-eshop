@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getProduct } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import {AddToCartButton} from "@/features/cart/add-to-cart-button";
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -78,7 +79,7 @@ export default async function ProductDetailsPage({ params, searchParams }: Props
                     <div className="text-2xl font-semibold">€{Number(product.price).toFixed(2)}</div>
 
                     <div className="flex gap-2">
-                        <Button>Add to cart</Button>
+                        <AddToCartButton product={product} />
                     </div>
                 </div>
             </div>

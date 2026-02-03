@@ -83,15 +83,14 @@ export function ProductsControls({
 
     // Debounce search (300ms)
     useEffect(() => {
-        // If the input already matches the URL query, do nothing
-        if (query.trim() === (currentQuery ?? "").trim()) return;
+        if (query.trim() === currentQuery.trim()) return;
 
         const t = setTimeout(() => {
             go({ page: 0, q: query });
         }, 300);
 
         return () => clearTimeout(t);
-    }, [query, currentQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [query, currentQuery, go]);
 
 
     function clearCategory() {
