@@ -135,15 +135,36 @@ export type OrderResponse = {
 };
 
 export async function createOrder(payload: CreateOrderRequest): Promise<OrderResponse> {
-    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
+    let res: Response;
+
+    try {
+        res = await fetch(`${API_INTERNAL_BASE_URL}/api/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+    } catch {
+        // Network-level error (backend down, DNS, refused connection, etc.)
+        throw new Error("Backend is unreachable. Is the Spring Boot backend running?");
+    }
 
     if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Failed to create order: ${res.status} ${txt}`);
+        let message = `Failed to create order (${res.status})`;
+
+        try {
+            const contentType = res.headers.get("content-type") ?? "";
+            if (contentType.includes("application/json")) {
+                const json = await res.json();
+                message = json?.message ?? json?.error ?? json?.detail ?? message;
+            } else {
+                const txt = await res.text();
+                if (txt?.trim()) message = txt;
+            }
+        } catch {
+            // ignore parsing errors
+        }
+
+        throw new Error(message);
     }
 
     return res.json();

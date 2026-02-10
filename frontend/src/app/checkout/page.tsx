@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
         e.preventDefault();
         setError(null);
 
-        if (!canSubmit) return;
+        if (!canSubmit || submitting) return;
 
         try {
             setSubmitting(true);
@@ -74,7 +74,7 @@ export default function CheckoutPage() {
                 zip: form.zip.trim(),
                 items: items.map((it) => ({
                     productId: it.id,
-                    price: it.price, // backend wants price in request (BigDecimal)
+                    price: it.price, // JSON number -> backend BigDecimal OK
                     qty: it.qty,
                 })),
             };
@@ -100,22 +100,31 @@ export default function CheckoutPage() {
                     <p className="text-sm text-muted-foreground">Total €{total.toFixed(2)}</p>
                 </div>
 
-                <Button asChild variant="ghost">
-                    <Link href="/cart">Back to cart</Link>
+                {/* Optional: disable back button while submitting */}
+                <Button asChild variant="ghost" disabled={submitting}>
+                    <Link href="/cart" aria-disabled={submitting} tabIndex={submitting ? -1 : 0}>
+                        Back to cart
+                    </Link>
                 </Button>
             </div>
 
-            <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-2">
+            <form
+                onSubmit={onSubmit}
+                className={`grid gap-6 lg:grid-cols-2 ${submitting ? "opacity-60" : ""}`}
+                aria-busy={submitting}
+            >
                 <div className="space-y-3 rounded-xl border p-4">
                     <h2 className="font-semibold">Customer details</h2>
 
                     <div className="grid gap-3">
                         <Input
+                            disabled={submitting}
                             value={form.customerName}
                             onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
                             placeholder="Full name"
                         />
                         <Input
+                            disabled={submitting}
                             value={form.phone}
                             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                             placeholder="Phone"
@@ -128,16 +137,19 @@ export default function CheckoutPage() {
 
                     <div className="grid gap-3">
                         <Input
+                            disabled={submitting}
                             value={form.addressLine}
                             onChange={(e) => setForm((f) => ({ ...f, addressLine: e.target.value }))}
                             placeholder="Address line"
                         />
                         <Input
+                            disabled={submitting}
                             value={form.city}
                             onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
                             placeholder="City"
                         />
                         <Input
+                            disabled={submitting}
                             value={form.zip}
                             onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
                             placeholder="ZIP"
@@ -147,6 +159,10 @@ export default function CheckoutPage() {
                     {error && (
                         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                             {error}
+                            <div className="mt-1 text-xs text-red-700/80">
+                                If you’re using Docker, make sure the backend is running:{" "}
+                                <code>docker compose up -d backend</code>
+                            </div>
                         </div>
                     )}
 

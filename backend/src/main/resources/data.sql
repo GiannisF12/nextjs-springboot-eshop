@@ -7,9 +7,9 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Products (use category_id)
 INSERT INTO products (title, price, image, category_id)
-VALUES ('Nike Air Max', 129.99, 'https://picsum.photos/seed/nike/600/600',
+VALUES ('Nike Air Max', 129.99, '/products/nike-air-max.jpg',
         (SELECT id FROM categories WHERE name = 'Shoes'));
 
 INSERT INTO products (title, price, image, category_id)
-VALUES ('Basic White Tee', 19.99, 'https://picsum.photos/seed/tee/600/600',
+VALUES ('Basic White Tee', 19.99, '/products/basic-tee.jpg',
         (SELECT id FROM categories WHERE name = 'T-Shirts'));
