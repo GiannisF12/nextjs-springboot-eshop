@@ -94,3 +94,64 @@ export async function getCategories(): Promise<Category[]> {
     if (!res.ok) throw new Error("Failed to fetch categories");
     return res.json();
 }
+
+// --- Orders (Checkout) ---
+
+export type CreateOrderItem = {
+    productId: number;
+    price: number; // backend expects BigDecimal, JSON number is OK
+    qty: number;
+};
+
+export type CreateOrderRequest = {
+    customerName: string;
+    phone: string;
+    addressLine: string;
+    city: string;
+    zip: string;
+    items: CreateOrderItem[];
+};
+
+export type OrderItem = {
+    productId: number;
+    title: string;
+    price: number;
+    image: string;
+    category: string;
+    qty: number;
+    lineTotal: number;
+};
+
+export type OrderResponse = {
+    id: number;
+    createdAt: string;
+    customerName: string;
+    phone: string;
+    addressLine: string;
+    city: string;
+    zip: string;
+    total: number;
+    items: OrderItem[];
+};
+
+export async function createOrder(payload: CreateOrderRequest): Promise<OrderResponse> {
+    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Failed to create order: ${res.status} ${txt}`);
+    }
+
+    return res.json();
+}
+
+export async function getOrder(id: string): Promise<OrderResponse | null> {
+    const res = await fetch(`${API_INTERNAL_BASE_URL}/api/orders/${id}`, { cache: "no-store" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error("Failed to fetch order");
+    return res.json();
+}

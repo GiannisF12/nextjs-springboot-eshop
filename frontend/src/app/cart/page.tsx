@@ -84,11 +84,15 @@ export default function CartPage() {
                 ))}
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-3">
                 <div className="rounded-xl border p-4 text-right">
                     <div className="text-sm text-muted-foreground">Subtotal</div>
                     <div className="text-xl font-semibold">€{totalPrice.toFixed(2)}</div>
                 </div>
+
+                <Button asChild variant="secondary">
+                    <Link href="/checkout">Checkout</Link>
+                </Button>
             </div>
         </div>
     );
