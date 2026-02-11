@@ -121,6 +121,12 @@ export type OrderItem = {
     qty: number;
     lineTotal: number;
 };
+export type OrderStatus =
+    | "NEW"
+    | "PROCESSING"
+    | "SHIPPED"
+    | "DELIVERED"
+    | "CANCELLED";
 
 export type OrderResponse = {
     id: number;
@@ -131,6 +137,7 @@ export type OrderResponse = {
     city: string;
     zip: string;
     total: number;
+    status: OrderStatus
     items: OrderItem[];
 };
 

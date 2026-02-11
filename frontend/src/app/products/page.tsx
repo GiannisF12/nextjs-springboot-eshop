@@ -101,8 +101,16 @@ export default async function ProductsPage({ searchParams }: Props) {
             </div>
 
             {data.content.length === 0 ? (
-                <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
-                    No products found.
+                <div className="rounded-xl border p-8 text-center space-y-3">
+                    <div className="text-sm text-muted-foreground">
+                        No products found.
+                    </div>
+
+                    <Button asChild variant="outline">
+                        <Link href="/products?page=0&size=12&sort=id,desc">
+                            Reset filters
+                        </Link>
+                    </Button>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

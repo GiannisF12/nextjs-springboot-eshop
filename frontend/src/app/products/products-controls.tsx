@@ -112,6 +112,9 @@ export function ProductsControls({
 
     const hasSearch = currentQuery.trim().length > 0;
 
+    function resetAll() {
+        router.push(`/products?page=0&size=${currentSize}&sort=${currentSort}`);
+    }
     return (
         <div className="flex flex-col gap-3">
             {/* Active chips */}
@@ -119,6 +122,9 @@ export function ProductsControls({
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="text-xs text-muted-foreground">Active filters:</div>
 
+                    <Button type="button" variant="outline" onClick={resetAll}>
+                        Reset
+                    </Button>
                     {activeCategory && (
                         <div className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
                             <span>{activeCategory.name}</span>
@@ -172,7 +178,11 @@ export function ProductsControls({
                     />
                 </div>
 
-                <Button type="submit" variant="secondary">
+                <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={query.trim() === currentQuery.trim()}
+                >
                     Search
                 </Button>
 

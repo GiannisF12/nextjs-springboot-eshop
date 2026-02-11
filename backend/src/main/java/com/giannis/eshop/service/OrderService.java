@@ -4,6 +4,7 @@ import com.giannis.eshop.dto.CreateOrderRequest;
 import com.giannis.eshop.dto.OrderResponse;
 import com.giannis.eshop.model.Order;
 import com.giannis.eshop.model.OrderItem;
+import com.giannis.eshop.model.OrderStatus;
 import com.giannis.eshop.model.Product;
 import com.giannis.eshop.repository.OrderRepository;
 import com.giannis.eshop.repository.ProductRepository;
@@ -33,6 +34,7 @@ public class OrderService {
                 .city(req.city())
                 .zip(req.zip())
                 .total(BigDecimal.ZERO)
+                .status(OrderStatus.NEW)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -104,7 +106,21 @@ public class OrderService {
                 o.getCity(),
                 o.getZip(),
                 o.getTotal(),
+                o.getStatus(),
                 items
         );
+    }
+
+    @Transactional
+    public OrderResponse updateStatus(Long id, OrderStatus status) {
+        Order order = orderRepository.findByIdWithItems(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Order not found"
+                ));
+
+        order.setStatus(status);
+
+        return toResponse(order);
     }
 }

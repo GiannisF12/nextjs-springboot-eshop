@@ -40,6 +40,17 @@ public class Order {
     @Column(nullable = false)
     private BigDecimal total;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private OrderStatus status = OrderStatus.NEW;
+
+    @PrePersist
+    void onCreate() {
+        this.createdAt = Instant.now();
+        if (this.status == null) this.status = OrderStatus.NEW;
+    }
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
@@ -47,9 +58,4 @@ public class Order {
     )
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = Instant.now();
-    }
 }

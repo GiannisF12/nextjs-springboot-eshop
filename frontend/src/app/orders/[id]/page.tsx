@@ -1,8 +1,129 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getOrder } from "@/lib/api";
+import {getOrder, OrderStatus} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+
+function statusStyles(status: string) {
+    switch (status) {
+        case "NEW":
+            return "bg-gray-200 text-gray-800";
+        case "PROCESSING":
+            return "bg-yellow-100 text-yellow-800";
+        case "SHIPPED":
+            return "bg-blue-100 text-blue-800";
+        case "DELIVERED":
+            return "bg-green-100 text-green-800";
+        case "CANCELLED":
+            return "bg-red-100 text-red-800";
+        default:
+            return "bg-muted text-muted-foreground";
+    }
+}
+
+const ORDER_FLOW: OrderStatus[] = [
+    "NEW",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED",
+];
+
+const STATUS_META: Record<string, { label: string; icon: string }> = {
+    NEW: { label: "Order placed", icon: "🛒" },
+    PROCESSING: { label: "Processing", icon: "📦" },
+    SHIPPED: { label: "Shipped", icon: "🚚" },
+    DELIVERED: { label: "Delivered", icon: "✅" },
+};
+
+function flowIndex(status: OrderStatus) {
+    return ORDER_FLOW.indexOf(status);
+}
+
+function StatusTimeline({ status }: { status: OrderStatus }) {
+    if (status === "CANCELLED") {
+        return (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                <div className="text-sm font-semibold text-red-700">
+                    ❌ Order Cancelled
+                </div>
+                <div className="mt-1 text-xs text-red-600">
+                    This order will not be processed further.
+                </div>
+            </div>
+        );
+    }
+
+    const current = flowIndex(status);
+
+    return (
+        <div className="rounded-xl border p-6">
+            <div className="mb-6 text-sm font-semibold">Order progress</div>
+
+            <div className="relative">
+                {/* Connecting Line */}
+                <div className="absolute top-4 left-0 right-0 h-0.5 bg-muted" />
+
+                <div
+                    className="absolute top-4 left-0 h-0.5 bg-blue-600 transition-all duration-500"
+                    style={{
+                        width:
+                            current <= 0
+                                ? "0%"
+                                : `${(current / (ORDER_FLOW.length - 1)) * 100}%`,
+                    }}
+                />
+
+                <ol className="relative grid grid-cols-4">
+                    {ORDER_FLOW.map((step, idx) => {
+                        const done = idx < current;
+                        const active = idx === current;
+
+                        return (
+                            <li
+                                key={step}
+                                className="flex flex-col items-center text-center"
+                            >
+                                {/* Circle */}
+                                <div
+                                    className={[
+                                        "z-10 flex h-8 w-8 items-center justify-center rounded-full border text-sm transition-all duration-300",
+                                        done &&
+                                        "bg-green-600 border-green-600 text-white",
+                                        active &&
+                                        "bg-blue-600 border-blue-600 text-white scale-110 shadow-lg",
+                                        !done &&
+                                        !active &&
+                                        "bg-background border-muted-foreground/30 text-muted-foreground",
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                >
+                                    {STATUS_META[step].icon}
+                                </div>
+
+                                {/* Label */}
+                                <div
+                                    className={[
+                                        "mt-2 text-xs transition-colors duration-300",
+                                        done && "text-green-700",
+                                        active && "text-blue-700 font-semibold",
+                                        !done &&
+                                        !active &&
+                                        "text-muted-foreground",
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                >
+                                    {STATUS_META[step].label}
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
+        </div>
+    );
+}
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -29,9 +150,14 @@ export default async function OrderPage({ params }: Props) {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Order #{order.id}</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Created at {new Date(order.createdAt).toLocaleString()}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge className={`${statusStyles(order.status)} border-0`}>
+                            {order.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                            Created at {new Date(order.createdAt).toLocaleString()}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="text-right">
@@ -39,6 +165,8 @@ export default async function OrderPage({ params }: Props) {
                     <div className="text-xl font-semibold">€{Number(order.total).toFixed(2)}</div>
                 </div>
             </div>
+
+            <StatusTimeline status={order.status} />
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="rounded-xl border p-4 lg:col-span-1">
