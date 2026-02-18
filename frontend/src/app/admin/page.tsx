@@ -1,37 +1,52 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/auth-context";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminGuard } from "@/features/admin/admin-guard";
+import { AdminNav } from "@/features/admin/admin-nav";
 
 export default function AdminPage() {
-    const router = useRouter();
-    const { role } = useAuth();
-
-    useEffect(() => {
-        if (role !== "ADMIN") router.replace("/login");
-    }, [role, router]);
-
-    if (role !== "ADMIN") {
-        return (
-            <div className="space-y-3">
-                <h1 className="text-2xl font-semibold">Not authorized</h1>
-                <p className="text-sm text-muted-foreground">
-                    You must be an admin to view this page.
-                </p>
-                <Button asChild variant="secondary">
-                    <Link href="/login">Go to login</Link>
-                </Button>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-3">
-            <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">You are an admin ✅</p>
-        </div>
+        <AdminGuard>
+            <div className="space-y-6">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Manage catalog and orders.
+                    </p>
+                </div>
+
+                <AdminNav />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Products</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Create, edit, and delete products.
+                            </p>
+                            <Button asChild>
+                                <Link href="/admin/products">Open products</Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Orders</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Track and update order status.
+                            </p>
+                            <Button asChild variant="outline">
+                                <Link href="/admin/orders">Open orders</Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </AdminGuard>
     );
 }

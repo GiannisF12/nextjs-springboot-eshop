@@ -11,6 +11,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     try {
         res = await fetch(url, {
             ...init,
+            credentials: init.credentials ?? "include",
             headers: {
                 ...(init.headers ?? {}),
                 "Content-Type": "application/json",
@@ -23,6 +24,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     if (!res.ok) {
         const txt = await res.text().catch(() => "");
         throw new Error(`${res.status} ${txt || res.statusText}`);
+    }
+
+    if (res.status === 204) {
+        return undefined as T;
     }
 
     return res.json() as Promise<T>;

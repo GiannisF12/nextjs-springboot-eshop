@@ -12,18 +12,22 @@ export default function LoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        setError(null);
+        setSubmitting(true);
 
-        // TEMP FAKE LOGIN
-        if (email === "admin@test.com") {
-            login({ id: 1, email, role: "ADMIN" });
-        } else {
-            login({ id: 2, email, role: "USER" });
+        try {
+            const user = await login(email, password);
+            router.push(user.role === "ADMIN" ? "/admin" : "/");
+        } catch {
+            setError("Invalid email or password.");
+        } finally {
+            setSubmitting(false);
         }
-
-        router.push("/");
     }
 
     return (
@@ -43,10 +47,11 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                 />
 
-                <Button type="submit" className="w-full">
-                    Login
+                <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Logging in..." : "Login"}
                 </Button>
             </form>
+            {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
     );
 }

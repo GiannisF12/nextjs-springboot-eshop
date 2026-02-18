@@ -2,31 +2,61 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import type { AuthUser, Role } from "@/lib/auth-types";
+import { loginApi, logoutApi, meApi } from "@/lib/api";
 
 type AuthContextType = {
     user: AuthUser | null;
     role: Role;
-    login: (user: AuthUser) => void;
-    logout: () => void;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<AuthUser>;
+    logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    function login(u: AuthUser) {
-        setUser(u);
+    useEffect(() => {
+        let active = true;
+
+        async function bootstrap() {
+            try {
+                const currentUser = await meApi();
+                if (active) setUser(currentUser);
+            } catch {
+                if (active) setUser(null);
+            } finally {
+                if (active) setLoading(false);
+            }
+        }
+
+        bootstrap();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    async function login(email: string, password: string) {
+        const loggedInUser = await loginApi(email, password);
+        setUser(loggedInUser);
+        return loggedInUser;
     }
 
-    function logout() {
-        setUser(null);
+    async function logout() {
+        try {
+            await logoutApi();
+        } finally {
+            setUser(null);
+        }
     }
 
     const role: Role = user?.role ?? "GUEST";
 
     return (
-        <AuthContext.Provider value={{ user, role, login, logout }}>
+        <AuthContext.Provider value={{ user, role, loading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

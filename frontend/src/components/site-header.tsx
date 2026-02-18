@@ -33,7 +33,7 @@ export function SiteHeader() {
                             type="button"
                             variant="outline"
                             onClick={() => {
-                                logout();
+                                void logout();
                             }}
                         >
                             Logout

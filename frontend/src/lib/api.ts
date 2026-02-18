@@ -35,6 +35,21 @@ export type Category = {
     name: string;
 };
 
+export type AuthUserResponse = {
+    id: number;
+    email: string;
+    role: "USER" | "ADMIN";
+};
+
+export type AdminProduct = {
+    id: number;
+    title: string;
+    price: number;
+    image: string;
+    categoryId: number;
+    categoryName: string;
+};
+
 
 function toProduct(p: ProductResponse): Product {
     return {
@@ -158,4 +173,69 @@ export async function getOrder(id: string): Promise<OrderResponse | null> {
         if (e instanceof Error && e.message.startsWith("404")) return null;
         throw e;
     }
+}
+
+// --- Auth ---
+
+export async function loginApi(email: string, password: string): Promise<AuthUserResponse> {
+    return apiFetch<AuthUserResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+    });
+}
+
+export async function meApi(): Promise<AuthUserResponse> {
+    return apiFetch<AuthUserResponse>("/api/auth/me", { cache: "no-store" });
+}
+
+export async function logoutApi(): Promise<void> {
+    await apiFetch("/api/auth/logout", { method: "POST" });
+}
+
+// --- Admin Products ---
+
+export async function getAdminProducts(
+    page = 0,
+    size = 100,
+    sort = "id,desc"
+): Promise<Page<AdminProduct>> {
+    const params = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        sort,
+    });
+
+    return apiFetch<Page<AdminProduct>>(`/api/products?${params.toString()}`, {
+        cache: "no-store",
+    });
+}
+
+export type AdminProductPayload = {
+    title: string;
+    price: number;
+    image: string;
+    categoryId: number;
+};
+
+export async function createAdminProduct(
+    payload: AdminProductPayload
+): Promise<AdminProduct> {
+    return apiFetch<AdminProduct>("/api/products", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function updateAdminProduct(
+    id: number,
+    payload: AdminProductPayload
+): Promise<AdminProduct> {
+    return apiFetch<AdminProduct>(`/api/products/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function deleteAdminProduct(id: number): Promise<void> {
+    await apiFetch(`/api/products/${id}`, { method: "DELETE" });
 }
