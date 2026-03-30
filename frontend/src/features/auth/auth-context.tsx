@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import type { AuthUser, Role } from "@/lib/auth-types";
-import { loginApi, logoutApi, meApi } from "@/lib/api";
+import { loginApi, logoutApi, meApi, registerApi } from "@/lib/api";
 
 type AuthContextType = {
     user: AuthUser | null;
     role: Role;
     loading: boolean;
     login: (email: string, password: string) => Promise<AuthUser>;
+    register: (email: string, password: string, name: string) => Promise<AuthUser>;
     logout: () => Promise<void>;
 };
 
@@ -45,6 +46,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return loggedInUser;
     }
 
+    async function register(email: string, password: string, name: string) {
+        const newUser = await registerApi(email, password, name);
+        setUser(newUser);
+        return newUser;
+    }
+
     async function logout() {
         try {
             await logoutApi();
@@ -56,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const role: Role = user?.role ?? "GUEST";
 
     return (
-        <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, role, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

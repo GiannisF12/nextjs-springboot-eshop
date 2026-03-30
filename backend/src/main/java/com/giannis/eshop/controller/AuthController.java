@@ -2,7 +2,9 @@ package com.giannis.eshop.controller;
 
 import com.giannis.eshop.dto.AuthUserResponse;
 import com.giannis.eshop.dto.LoginRequest;
+import com.giannis.eshop.dto.RegisterRequest;
 import com.giannis.eshop.model.AppUser;
+import com.giannis.eshop.model.Role;
 import com.giannis.eshop.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,8 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,7 +29,40 @@ public class AuthController {
 
     private final AuthenticationManager authManager;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final SecurityContextRepository securityContextRepository;
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthUserResponse register(@Valid @RequestBody RegisterRequest req,
+                                     HttpServletRequest request,
+                                     HttpServletResponse response) {
+        if (userRepository.existsByEmail(req.email())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use");
+        }
+
+        AppUser user = AppUser.builder()
+                .email(req.email())
+                .name(req.name())
+                .passwordHash(passwordEncoder.encode(req.password()))
+                .role(Role.USER)
+                .build();
+
+        userRepository.save(user);
+
+        // Log the user in immediately after registration
+        Authentication auth = authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(req.email(), req.password())
+        );
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(auth);
+        SecurityContextHolder.setContext(context);
+        request.getSession(true);
+        securityContextRepository.saveContext(context, request, response);
+
+        return new AuthUserResponse(user.getId(), user.getEmail(), user.getRole());
+    }
 
     @PostMapping("/login")
     public AuthUserResponse login(@Valid @RequestBody LoginRequest req,

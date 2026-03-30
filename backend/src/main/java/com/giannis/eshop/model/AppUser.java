@@ -18,6 +18,8 @@ public class AppUser {
     @Column(nullable = false, unique = true)
     private String email;
 
+    private String name;
+
     @Column(nullable = false)
     private String passwordHash;
 
