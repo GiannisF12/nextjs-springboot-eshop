@@ -78,14 +78,21 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
 
                         // auth endpoints
-                        .requestMatchers("/api/auth/login", "/api/auth/me", "/api/auth/logout").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/auth/logout").permitAll()
 
                         // public browsing
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
 
+                        // orders: guests can place orders (POST) and view their
+                        // confirmation page (GET by ID) — no account needed.
+                        // Listing all orders and changing status stay admin-only.
+                        .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/**").hasRole("ADMIN")
+
                         // protect existing endpoints (Option A)
                         .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                        .requestMatchers("/api/orders/**").authenticated()
 
                         // dedicated admin area (Option B)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

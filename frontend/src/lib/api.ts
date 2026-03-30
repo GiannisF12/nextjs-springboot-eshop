@@ -184,6 +184,13 @@ export async function loginApi(email: string, password: string): Promise<AuthUse
     });
 }
 
+export async function registerApi(email: string, password: string, name: string): Promise<AuthUserResponse> {
+    return apiFetch<AuthUserResponse>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password, name }),
+    });
+}
+
 export async function meApi(): Promise<AuthUserResponse> {
     return apiFetch<AuthUserResponse>("/api/auth/me", { cache: "no-store" });
 }
@@ -238,4 +245,19 @@ export async function updateAdminProduct(
 
 export async function deleteAdminProduct(id: number): Promise<void> {
     await apiFetch(`/api/products/${id}`, { method: "DELETE" });
+}
+
+// --- Admin Orders ---
+
+export async function getAdminOrders(): Promise<OrderResponse[]> {
+    return apiFetch<OrderResponse[]>("/api/orders", { cache: "no-store" });
+}
+
+export async function updateOrderStatus(
+    id: number,
+    status: OrderStatus
+): Promise<OrderResponse> {
+    return apiFetch<OrderResponse>(`/api/orders/${id}/status?status=${status}`, {
+        method: "PATCH",
+    });
 }
