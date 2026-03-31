@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { resolveImageUrl } from "@/lib/http";
 
 type Props = {
     id: number;
@@ -20,7 +21,7 @@ export function ProductCard({ id, title, price, image, category, href }: Props) 
                 <div className="aspect-square w-full overflow-hidden bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src={image}
+                        src={resolveImageUrl(image)}
                         alt={title}
                         className="h-full w-full object-cover transition-transform hover:scale-105"
                         loading="lazy"

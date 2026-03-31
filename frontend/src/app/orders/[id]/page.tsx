@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { resolveImageUrl } from "@/lib/http";
 import {getOrder, OrderStatus} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
@@ -195,7 +196,7 @@ export default async function OrderPage({ params }: Props) {
                         >
                             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                                 <Image
-                                    src={it.image}
+                                    src={resolveImageUrl(it.image)}
                                     alt={it.title}
                                     fill
                                     className="object-cover"

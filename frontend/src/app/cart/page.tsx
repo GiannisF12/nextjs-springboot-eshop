@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
+import { resolveImageUrl } from "@/lib/http";
 
 export default function CartPage() {
     const items = useCart((s) => s.items);
@@ -44,7 +45,7 @@ export default function CartPage() {
                 {items.map((it) => (
                     <div key={it.id} className="flex gap-4 rounded-xl border p-3">
                         <div className="relative h-20 w-20 overflow-hidden rounded-lg">
-                            <Image src={it.image} alt={it.title} fill className="object-cover" />
+                            <Image src={resolveImageUrl(it.image)} alt={it.title} fill className="object-cover" />
                         </div>
 
                         <div className="flex-1">

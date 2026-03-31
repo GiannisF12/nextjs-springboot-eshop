@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getProduct } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import {AddToCartButton} from "@/features/cart/add-to-cart-button";
+import { AddToCartButton } from "@/features/cart/add-to-cart-button";
+import { resolveImageUrl } from "@/lib/http";
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -62,7 +63,7 @@ export default async function ProductDetailsPage({ params, searchParams }: Props
                 <div className="aspect-square overflow-hidden rounded-xl bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src={product.image}
+                        src={resolveImageUrl(product.image)}
                         alt={product.title}
                         className="h-full w-full object-cover"
                     />

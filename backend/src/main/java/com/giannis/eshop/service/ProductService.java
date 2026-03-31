@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -59,8 +60,9 @@ public class ProductService {
         return toResponse(repository.save(product));
     }
 
+    @Transactional
     public ProductResponse update(Long id, UpdateProductRequest req) {
-        Product product = repository.findById(id)
+        Product product = repository.findByIdWithCategory(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
         Category category = categoryRepository.findById(req.categoryId())

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGuard } from "@/features/admin/admin-guard";
@@ -13,6 +13,7 @@ import {
     getCategories,
     type Category,
     updateAdminProduct,
+    uploadImage,
 } from "@/lib/api";
 
 type ProductFormState = {
@@ -36,8 +37,10 @@ export default function AdminProductsPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const editingProduct = useMemo(
         () => products.find((p) => p.id === editingId) ?? null,
@@ -83,6 +86,24 @@ export default function AdminProductsPage() {
         });
         setError(null);
         setSuccess(null);
+    }
+
+    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        setError(null);
+
+        try {
+            const url = await uploadImage(file);
+            setForm((prev) => ({ ...prev, image: url }));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Image upload failed.");
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
     }
 
     async function onSubmit(e: React.FormEvent) {
@@ -179,11 +200,35 @@ export default function AdminProductsPage() {
                             value={form.price}
                             onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
                         />
-                        <Input
-                            placeholder="Image URL or path"
-                            value={form.image}
-                            onChange={(e) => setForm((prev) => ({ ...prev, image: e.target.value }))}
-                        />
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploading}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {uploading ? "Uploading..." : "Upload image"}
+                                </Button>
+                                {form.image && (
+                                    <span className="truncate text-sm text-muted-foreground">
+                                        {form.image}
+                                    </span>
+                                )}
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                className="hidden"
+                                onChange={handleFileUpload}
+                            />
+                            <Input
+                                placeholder="Or paste image URL"
+                                value={form.image}
+                                onChange={(e) => setForm((prev) => ({ ...prev, image: e.target.value }))}
+                            />
+                        </div>
                         <select
                             className="h-9 rounded-md border bg-transparent px-3 text-sm"
                             value={form.categoryId}

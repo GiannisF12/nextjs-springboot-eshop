@@ -32,6 +32,8 @@ services:
       SPRING_SQL_INIT_MODE: always
     ports:
       - "8080:8080"
+    volumes:
+      - eshop_uploads:/app/uploads
 
   frontend:
     build:
@@ -47,3 +49,4 @@ services:
 
 volumes:
   eshop_pg:
+  eshop_uploads:
