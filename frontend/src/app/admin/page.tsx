@@ -1,52 +1,166 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
+import {
+    type AdminStats,
+    type OrderResponse,
+    type OrderStatus,
+    getAdminStats,
+    getAdminOrders,
+} from "@/lib/api";
+
+const STATUS_COLORS: Record<OrderStatus, string> = {
+    NEW: "bg-blue-100 text-blue-800",
+    PROCESSING: "bg-yellow-100 text-yellow-800",
+    SHIPPED: "bg-purple-100 text-purple-800",
+    DELIVERED: "bg-green-100 text-green-800",
+    CANCELLED: "bg-red-100 text-red-800",
+};
 
 export default function AdminPage() {
+    const [stats, setStats] = useState<AdminStats | null>(null);
+    const [recentOrders, setRecentOrders] = useState<OrderResponse[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function load() {
+            try {
+                const [statsData, ordersData] = await Promise.all([
+                    getAdminStats(),
+                    getAdminOrders(),
+                ]);
+                setStats(statsData);
+                setRecentOrders(ordersData.slice(0, 5));
+            } catch {
+                // stats will stay null — cards just show "—"
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        void load();
+    }, []);
+
     return (
         <AdminGuard>
             <div className="space-y-6">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage catalog and orders.
+                        Overview of your store.
                     </p>
                 </div>
 
                 <AdminNav />
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Products</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
-                                Create, edit, and delete products.
-                            </p>
-                            <Button asChild>
-                                <Link href="/admin/products">Open products</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatCard
+                        title="Total Orders"
+                        value={stats?.totalOrders}
+                        loading={loading}
+                    />
+                    <StatCard
+                        title="Revenue"
+                        value={
+                            stats
+                                ? `$${Number(stats.totalRevenue).toFixed(2)}`
+                                : undefined
+                        }
+                        loading={loading}
+                    />
+                    <StatCard
+                        title="Products"
+                        value={stats?.totalProducts}
+                        loading={loading}
+                    />
+                    <StatCard
+                        title="Users"
+                        value={stats?.totalUsers}
+                        loading={loading}
+                    />
+                </div>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Orders</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
-                                Track and update order status.
+                <div className="rounded-lg border">
+                    <div className="border-b px-4 py-3">
+                        <h2 className="text-lg font-semibold">Recent Orders</h2>
+                    </div>
+
+                    <div className="divide-y">
+                        {loading ? (
+                            <p className="px-4 py-4 text-sm text-muted-foreground">
+                                Loading...
                             </p>
-                            <Button asChild variant="outline">
-                                <Link href="/admin/orders">Open orders</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
+                        ) : recentOrders.length === 0 ? (
+                            <p className="px-4 py-4 text-sm text-muted-foreground">
+                                No orders yet.
+                            </p>
+                        ) : (
+                            recentOrders.map((order) => (
+                                <Link
+                                    key={order.id}
+                                    href="/admin/orders"
+                                    className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-muted/50 md:flex-row md:items-center md:justify-between"
+                                >
+                                    <div>
+                                        <p className="font-medium">
+                                            #{order.id} &middot;{" "}
+                                            {order.customerName}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(
+                                                order.createdAt
+                                            ).toLocaleDateString()}{" "}
+                                            &middot; {order.items.length}{" "}
+                                            {order.items.length === 1
+                                                ? "item"
+                                                : "items"}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}
+                                        >
+                                            {order.status}
+                                        </span>
+                                        <span className="font-medium">
+                                            ${order.total.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
         </AdminGuard>
+    );
+}
+
+function StatCard({
+    title,
+    value,
+    loading,
+}: {
+    title: string;
+    value?: string | number;
+    loading: boolean;
+}) {
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-2xl font-bold">
+                    {loading ? "..." : value ?? "\u2014"}
+                </p>
+            </CardContent>
+        </Card>
     );
 }
