@@ -80,19 +80,29 @@ public class SecurityConfig {
                         // auth endpoints
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/auth/logout").permitAll()
 
-                        // public browsing
+                        // public browsing + uploaded images
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/images").hasRole("ADMIN")
 
                         // orders: guests can place orders (POST) and view their
                         // confirmation page (GET by ID) — no account needed.
                         // Listing all orders and changing status stay admin-only.
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/orders/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/**").hasRole("ADMIN")
 
-                        // protect existing endpoints (Option A)
+                        // category management (create, update, delete) — admin only
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+
+                        // product management — admin only
                         .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
 
                         // dedicated admin area (Option B)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

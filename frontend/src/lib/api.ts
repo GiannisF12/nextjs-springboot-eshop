@@ -112,6 +112,26 @@ export async function getCategories(): Promise<Category[]> {
     return res.json();
 }
 
+// --- Admin Categories ---
+
+export async function createCategory(name: string): Promise<Category> {
+    return apiFetch<Category>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+    });
+}
+
+export async function updateCategory(id: number, name: string): Promise<Category> {
+    return apiFetch<Category>(`/api/categories/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name }),
+    });
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+    await apiFetch(`/api/categories/${id}`, { method: "DELETE" });
+}
+
 // --- Orders (Checkout) ---
 
 export type CreateOrderItem = {
@@ -217,6 +237,26 @@ export async function getAdminProducts(
     });
 }
 
+export async function uploadImage(file: File): Promise<string> {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${base}/api/images`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+    });
+
+    if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`${res.status} ${txt || res.statusText}`);
+    }
+
+    const data: { url: string } = await res.json();
+    return data.url;
+}
+
 export type AdminProductPayload = {
     title: string;
     price: number;
@@ -245,6 +285,25 @@ export async function updateAdminProduct(
 
 export async function deleteAdminProduct(id: number): Promise<void> {
     await apiFetch(`/api/products/${id}`, { method: "DELETE" });
+}
+
+// --- My Orders (logged-in user) ---
+
+export async function getMyOrders(): Promise<OrderResponse[]> {
+    return apiFetch<OrderResponse[]>("/api/orders/mine", { cache: "no-store" });
+}
+
+// --- Admin Dashboard ---
+
+export type AdminStats = {
+    totalOrders: number;
+    totalProducts: number;
+    totalUsers: number;
+    totalRevenue: number;
+};
+
+export async function getAdminStats(): Promise<AdminStats> {
+    return apiFetch<AdminStats>("/api/admin/stats", { cache: "no-store" });
 }
 
 // --- Admin Orders ---

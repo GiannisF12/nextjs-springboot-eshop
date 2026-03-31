@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +24,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         order by o.id desc
     """)
     List<Order> findAllWithItems();
+
+    @Query("""
+        select distinct o from Order o
+        left join fetch o.items
+        where o.user.id = :userId
+        order by o.createdAt desc
+    """)
+    List<Order> findByUserIdWithItems(@Param("userId") Long userId);
+
+    @Query("select sum(o.total) from Order o")
+    BigDecimal sumTotalRevenue();
 }

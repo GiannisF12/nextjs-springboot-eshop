@@ -2,6 +2,7 @@ package com.giannis.eshop.service;
 
 import com.giannis.eshop.dto.CreateOrderRequest;
 import com.giannis.eshop.dto.OrderResponse;
+import com.giannis.eshop.model.AppUser;
 import com.giannis.eshop.model.Order;
 import com.giannis.eshop.model.OrderItem;
 import com.giannis.eshop.model.OrderStatus;
@@ -25,9 +26,10 @@ public class OrderService {
     private final ProductRepository productRepository;
 
     @Transactional
-    public OrderResponse create(CreateOrderRequest req) {
+    public OrderResponse create(CreateOrderRequest req, AppUser user) {
 
         Order order = Order.builder()
+                .user(user)
                 .customerName(req.customerName())
                 .phone(req.phone())
                 .addressLine(req.addressLine())
@@ -109,6 +111,13 @@ public class OrderService {
                 o.getStatus(),
                 items
         );
+    }
+
+    public List<OrderResponse> findByUser(Long userId) {
+        return orderRepository.findByUserIdWithItems(userId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional

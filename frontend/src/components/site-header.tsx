@@ -20,6 +20,12 @@ export function SiteHeader() {
                         <Link href="/products">Products</Link>
                     </Button>
 
+                    {user && (
+                        <Button asChild variant="ghost">
+                            <Link href="/account/orders">My Orders</Link>
+                        </Button>
+                    )}
+
                     {role === "ADMIN" && (
                         <Button asChild variant="ghost">
                             <Link href="/admin">Admin</Link>
