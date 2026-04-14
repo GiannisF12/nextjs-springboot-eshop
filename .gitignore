@@ -9,3 +9,6 @@
 ### VS Code ###
 .vscode/
 .idea/
+
+# Dev artifacts
+cookies.txt
