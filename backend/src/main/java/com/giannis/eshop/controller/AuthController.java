@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,7 +60,7 @@ public class AuthController {
         request.getSession(true);
         securityContextRepository.saveContext(context, request, response);
 
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getRole());
+        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 
     @PostMapping("/login")
@@ -82,7 +81,7 @@ public class AuthController {
         AppUser user = userRepository.findByEmail(req.email())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getRole());
+        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 
     @PostMapping("/logout")
@@ -102,6 +101,28 @@ public class AuthController {
         String email = auth.getName();
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getRole());
+        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
+
+    @PutMapping("/me")
+    public AuthUserResponse updateProfile(@Valid @RequestBody UpdateProfileRequest req,
+                                          Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        }
+
+        AppUser user = userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
+
+        user.setName(req.name());
+        user.setEmail(req.email());
+        userRepository.save(user);
+
+        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+    }
+
+    record UpdateProfileRequest(
+            @jakarta.validation.constraints.NotBlank String name,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email String email
+    ) {}
 }

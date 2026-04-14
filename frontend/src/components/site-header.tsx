@@ -22,7 +22,7 @@ export function SiteHeader() {
 
                     {user && (
                         <Button asChild variant="ghost">
-                            <Link href="/account/orders">My Orders</Link>
+                            <Link href="/account">Account</Link>
                         </Button>
                     )}
 

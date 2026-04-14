@@ -38,6 +38,7 @@ export type Category = {
 export type AuthUserResponse = {
     id: number;
     email: string;
+    name: string | null;
     role: "USER" | "ADMIN";
 };
 
@@ -213,6 +214,13 @@ export async function registerApi(email: string, password: string, name: string)
 
 export async function meApi(): Promise<AuthUserResponse> {
     return apiFetch<AuthUserResponse>("/api/auth/me", { cache: "no-store" });
+}
+
+export async function updateProfileApi(name: string, email: string): Promise<AuthUserResponse> {
+    return apiFetch<AuthUserResponse>("/api/auth/me", {
+        method: "PUT",
+        body: JSON.stringify({ name, email }),
+    });
 }
 
 export async function logoutApi(): Promise<void> {

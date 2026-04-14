@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import type { AuthUser, Role } from "@/lib/auth-types";
-import { loginApi, logoutApi, meApi, registerApi } from "@/lib/api";
+import { loginApi, logoutApi, meApi, registerApi, updateProfileApi } from "@/lib/api";
 
 type AuthContextType = {
     user: AuthUser | null;
@@ -10,6 +10,7 @@ type AuthContextType = {
     loading: boolean;
     login: (email: string, password: string) => Promise<AuthUser>;
     register: (email: string, password: string, name: string) => Promise<AuthUser>;
+    updateProfile: (name: string, email: string) => Promise<AuthUser>;
     logout: () => Promise<void>;
 };
 
@@ -52,6 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return newUser;
     }
 
+    async function updateProfile(name: string, email: string) {
+        const updated = await updateProfileApi(name, email);
+        setUser(updated);
+        return updated;
+    }
+
     async function logout() {
         try {
             await logoutApi();
@@ -63,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const role: Role = user?.role ?? "GUEST";
 
     return (
-        <AuthContext.Provider value={{ user, role, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, role, loading, login, register, updateProfile, logout }}>
             {children}
         </AuthContext.Provider>
     );

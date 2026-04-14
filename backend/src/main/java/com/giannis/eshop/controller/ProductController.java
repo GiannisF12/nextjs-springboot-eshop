@@ -4,7 +4,6 @@ import com.giannis.eshop.dto.PageResponse;
 import com.giannis.eshop.dto.ProductResponse;
 import com.giannis.eshop.service.ProductService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import com.giannis.eshop.dto.CreateProductRequest;
 import com.giannis.eshop.dto.UpdateProductRequest;
 import jakarta.validation.Valid;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
