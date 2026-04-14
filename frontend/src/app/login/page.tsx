@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/auth-context";
@@ -15,6 +15,16 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
+
+    // Read one-shot notice stashed in sessionStorage (e.g. after email change)
+    useEffect(() => {
+        const msg = sessionStorage.getItem("loginNotice");
+        if (msg) {
+            setNotice(msg);
+            sessionStorage.removeItem("loginNotice");
+        }
+    }, []);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -34,6 +44,12 @@ export default function LoginPage() {
     return (
         <div className="max-w-md space-y-4">
             <h1 className="text-2xl font-semibold">Login</h1>
+
+            {notice && (
+                <p className="rounded-md bg-green-50 p-3 text-sm text-green-700">
+                    {notice}
+                </p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

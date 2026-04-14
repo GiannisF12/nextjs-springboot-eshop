@@ -114,15 +114,49 @@ public class AuthController {
         AppUser user = userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
 
+        String newEmail = req.email().trim();
+
+        // If email is actually changing, make sure it's not taken by someone else
+        if (!newEmail.equalsIgnoreCase(user.getEmail())
+                && userRepository.existsByEmail(newEmail)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use");
+        }
+
         user.setName(req.name());
-        user.setEmail(req.email());
+        user.setEmail(newEmail);
         userRepository.save(user);
 
         return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 
+    @PutMapping("/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@Valid @RequestBody ChangePasswordRequest req,
+                               Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        }
+
+        AppUser user = userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
+
+        if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        userRepository.save(user);
+    }
+
     record UpdateProfileRequest(
             @jakarta.validation.constraints.NotBlank String name,
             @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email String email
+    ) {}
+
+    record ChangePasswordRequest(
+            @jakarta.validation.constraints.NotBlank String currentPassword,
+            @jakarta.validation.constraints.NotBlank
+            @jakarta.validation.constraints.Size(min = 6, message = "New password must be at least 6 characters")
+            String newPassword
     ) {}
 }

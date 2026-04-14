@@ -223,6 +223,16 @@ export async function updateProfileApi(name: string, email: string): Promise<Aut
     });
 }
 
+export async function changePasswordApi(
+    currentPassword: string,
+    newPassword: string
+): Promise<void> {
+    await apiFetch("/api/auth/me/password", {
+        method: "PUT",
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+}
+
 export async function logoutApi(): Promise<void> {
     await apiFetch("/api/auth/logout", { method: "POST" });
 }
