@@ -16,5 +16,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+# next.config.ts is read at runtime by `next start` (specifically by the
+# image optimizer for the remotePatterns whitelist). Without it, every
+# external <Image src> returns a 400 and silently fails to render.
+COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 EXPOSE 3000
 CMD ["npm","run","start"]

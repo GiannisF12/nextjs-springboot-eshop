@@ -43,7 +43,12 @@ export default function CartPage() {
 
             <div className="space-y-3">
                 {items.map((it) => (
-                    <div key={it.id} className="flex gap-4 rounded-xl border p-3">
+                    // A single product in two different sizes shows up as two
+                    // separate lines, so the React key has to include the size.
+                    <div
+                        key={`${it.id}|${it.size}`}
+                        className="flex gap-4 rounded-xl border p-3"
+                    >
                         <div className="relative h-20 w-20 overflow-hidden rounded-lg">
                             <Image src={resolveImageUrl(it.image)} alt={it.title} fill className="object-cover" />
                         </div>
@@ -52,7 +57,12 @@ export default function CartPage() {
                             <div className="flex items-start justify-between gap-2">
                                 <div>
                                     <div className="font-medium">{it.title}</div>
-                                    <div className="text-sm text-muted-foreground">{it.category}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {it.category} · Size{" "}
+                                        <span className="font-medium text-foreground">
+                                            {it.size}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="font-semibold">€{it.price.toFixed(2)}</div>
                             </div>
@@ -62,7 +72,7 @@ export default function CartPage() {
                                     <Button
                                         variant="secondary"
                                         size="sm"
-                                        onClick={() => setQty(it.id, it.qty - 1)}
+                                        onClick={() => setQty(it.id, it.size, it.qty - 1)}
                                     >
                                         −
                                     </Button>
@@ -70,13 +80,22 @@ export default function CartPage() {
                                     <Button
                                         variant="secondary"
                                         size="sm"
-                                        onClick={() => setQty(it.id, it.qty + 1)}
+                                        disabled={it.qty >= it.maxStock}
+                                        onClick={() => setQty(it.id, it.size, it.qty + 1)}
                                     >
                                         +
                                     </Button>
+                                    {it.qty >= it.maxStock && (
+                                        <span className="text-xs text-amber-600">
+                                            max {it.maxStock} in stock
+                                        </span>
+                                    )}
                                 </div>
 
-                                <Button variant="ghost" onClick={() => remove(it.id)}>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => remove(it.id, it.size)}
+                                >
                                     Remove
                                 </Button>
                             </div>

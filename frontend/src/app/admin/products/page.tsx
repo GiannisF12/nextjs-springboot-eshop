@@ -5,13 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
+import { resolveImageUrl } from "@/lib/http";
 import {
     type AdminProduct,
+    type Category,
+    type SizeType,
+    SIZE_OPTIONS,
     createAdminProduct,
     deleteAdminProduct,
     getAdminProducts,
     getCategories,
-    type Category,
     updateAdminProduct,
     uploadImage,
 } from "@/lib/api";
@@ -23,6 +26,15 @@ type ProductFormState = {
     categoryId: string;
 };
 
+// One row per possible size for the selected category.
+// `enabled` = the admin ticked this size; `stock` is an input string
+// (parsed to a number on submit).
+type VariantFormRow = {
+    size: string;
+    enabled: boolean;
+    stock: string;
+};
+
 const EMPTY_FORM: ProductFormState = {
     title: "",
     price: "",
@@ -30,10 +42,20 @@ const EMPTY_FORM: ProductFormState = {
     categoryId: "",
 };
 
+/** Build a fresh list of variant rows for a given size type. */
+function emptyVariantsFor(sizeType: SizeType): VariantFormRow[] {
+    return SIZE_OPTIONS[sizeType].map((size) => ({
+        size,
+        enabled: false,
+        stock: "0",
+    }));
+}
+
 export default function AdminProductsPage() {
     const [products, setProducts] = useState<AdminProduct[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
+    const [variants, setVariants] = useState<VariantFormRow[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -72,6 +94,7 @@ export default function AdminProductsPage() {
     function startCreate() {
         setEditingId(null);
         setForm(EMPTY_FORM);
+        setVariants([]);
         setError(null);
         setSuccess(null);
     }
@@ -84,8 +107,56 @@ export default function AdminProductsPage() {
             image: product.image,
             categoryId: String(product.categoryId),
         });
+
+        // Prefill the variant rows: every possible size for this product's
+        // size type shows as a row, ticked and populated only for sizes
+        // the product actually has.
+        const existingBySize = new Map(
+            product.variants.map((v) => [v.size, v])
+        );
+        setVariants(
+            SIZE_OPTIONS[product.sizeType].map((size) => {
+                const existing = existingBySize.get(size);
+                return {
+                    size,
+                    enabled: existing !== undefined,
+                    stock: existing ? String(existing.stock) : "0",
+                };
+            })
+        );
+
         setError(null);
         setSuccess(null);
+    }
+
+    /**
+     * Category changes wipe + rebuild the variant rows to match the new
+     * category's size type (CLOTHING vs SHOE). This prevents the admin
+     * from submitting "M" sizes for a SHOE category.
+     */
+    function handleCategoryChange(newCategoryId: string) {
+        setForm((prev) => ({ ...prev, categoryId: newCategoryId }));
+
+        const selected = categories.find((c) => c.id === Number(newCategoryId));
+        if (!selected) {
+            setVariants([]);
+            return;
+        }
+        setVariants(emptyVariantsFor(selected.sizeType));
+    }
+
+    function toggleVariant(size: string) {
+        setVariants((prev) =>
+            prev.map((row) =>
+                row.size === size ? { ...row, enabled: !row.enabled } : row
+            )
+        );
+    }
+
+    function setVariantStock(size: string, stock: string) {
+        setVariants((prev) =>
+            prev.map((row) => (row.size === size ? { ...row, stock } : row))
+        );
     }
 
     async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -127,6 +198,22 @@ export default function AdminProductsPage() {
             return;
         }
 
+        // Collect only the sizes the admin ticked, and parse their stock.
+        const enabledVariants = variants.filter((v) => v.enabled);
+        if (enabledVariants.length === 0) {
+            setError("Please tick at least one size and set its stock.");
+            return;
+        }
+        const variantsPayload: { size: string; stock: number }[] = [];
+        for (const v of enabledVariants) {
+            const stockNumber = Number(v.stock);
+            if (!Number.isInteger(stockNumber) || stockNumber < 0) {
+                setError(`Stock for size ${v.size} must be a non-negative whole number.`);
+                return;
+            }
+            variantsPayload.push({ size: v.size, stock: stockNumber });
+        }
+
         setSaving(true);
 
         try {
@@ -135,6 +222,7 @@ export default function AdminProductsPage() {
                 price: priceNumber,
                 image: form.image.trim(),
                 categoryId,
+                variants: variantsPayload,
             };
 
             if (editingId === null) {
@@ -170,13 +258,22 @@ export default function AdminProductsPage() {
         }
     }
 
+    // Compact summary string shown on each row in the products list.
+    function variantSummary(product: AdminProduct): string {
+        if (product.variants.length === 0) return "no sizes";
+        return product.variants
+            .map((v) => `${v.size}:${v.stock}`)
+            .join(" · ");
+    }
+
     return (
         <AdminGuard>
             <div className="space-y-6">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold">Admin Products</h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage your product catalog.
+                        Manage your product catalog. Pick a category first — the
+                        available sizes depend on whether it&apos;s clothing or shoes.
                     </p>
                 </div>
 
@@ -232,9 +329,7 @@ export default function AdminProductsPage() {
                         <select
                             className="h-9 rounded-md border bg-transparent px-3 text-sm"
                             value={form.categoryId}
-                            onChange={(e) =>
-                                setForm((prev) => ({ ...prev, categoryId: e.target.value }))
-                            }
+                            onChange={(e) => handleCategoryChange(e.target.value)}
                         >
                             <option value="">Select category</option>
                             {categories.map((category) => (
@@ -243,6 +338,47 @@ export default function AdminProductsPage() {
                                 </option>
                             ))}
                         </select>
+
+                        {/* Variant editor */}
+                        {variants.length > 0 && (
+                            <div className="md:col-span-2">
+                                <p className="mb-2 text-sm font-medium">
+                                    Sizes &amp; stock
+                                </p>
+                                <p className="mb-3 text-xs text-muted-foreground">
+                                    Tick the sizes you stock, then enter the quantity
+                                    available for each.
+                                </p>
+                                <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                                    {variants.map((row) => (
+                                        <label
+                                            key={row.size}
+                                            className="flex items-center gap-2 rounded-md border px-3 py-2"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={row.enabled}
+                                                onChange={() => toggleVariant(row.size)}
+                                            />
+                                            <span className="w-10 text-sm font-medium">
+                                                {row.size}
+                                            </span>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                className="h-8"
+                                                disabled={!row.enabled}
+                                                value={row.stock}
+                                                onChange={(e) =>
+                                                    setVariantStock(row.size, e.target.value)
+                                                }
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex gap-2 md:col-span-2">
                             <Button type="submit" disabled={saving}>
@@ -285,12 +421,34 @@ export default function AdminProductsPage() {
                                     key={product.id}
                                     className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between"
                                 >
-                                    <div>
-                                        <p className="font-medium">{product.title}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            #{product.id} · {product.categoryName} · $
-                                            {product.price.toFixed(2)}
-                                        </p>
+                                    <div className="flex items-center gap-3">
+                                        {/* Thumbnail — helps the admin tell
+                                            products apart at a glance when
+                                            editing. Plain <img> (not next/Image)
+                                            so any URL the shop owner pastes in
+                                            renders without next.config tweaks. */}
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={resolveImageUrl(product.image)}
+                                            alt={product.title}
+                                            className="h-14 w-14 shrink-0 rounded-md border object-cover"
+                                            onError={(e) => {
+                                                // If the image 404s, hide it so
+                                                // we don't show a broken icon.
+                                                e.currentTarget.style.visibility =
+                                                    "hidden";
+                                            }}
+                                        />
+                                        <div>
+                                            <p className="font-medium">{product.title}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                #{product.id} · {product.categoryName} · $
+                                                {product.price.toFixed(2)}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {variantSummary(product)}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button

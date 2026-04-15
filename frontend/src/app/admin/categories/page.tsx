@@ -7,11 +7,18 @@ import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
 import {
     type Category,
+    type SizeType,
     getCategories,
     createCategory,
     updateCategory,
     deleteCategory,
 } from "@/lib/api";
+
+// Human-readable labels for the sizeType dropdown.
+const SIZE_TYPE_LABELS: Record<SizeType, string> = {
+    CLOTHING: "Clothing (S / M / L / XL / XXL)",
+    SHOE: "Shoes (EU 38 – 48)",
+};
 
 export default function AdminCategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -20,9 +27,14 @@ export default function AdminCategoriesPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
+    // Create form state
     const [newName, setNewName] = useState("");
+    const [newSizeType, setNewSizeType] = useState<SizeType>("CLOTHING");
+
+    // Edit form state
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editingName, setEditingName] = useState("");
+    const [editingSizeType, setEditingSizeType] = useState<SizeType>("CLOTHING");
 
     async function loadCategories() {
         setLoading(true);
@@ -50,8 +62,9 @@ export default function AdminCategoriesPage() {
         setSuccess(null);
 
         try {
-            await createCategory(newName.trim());
+            await createCategory(newName.trim(), newSizeType);
             setNewName("");
+            setNewSizeType("CLOTHING");
             setSuccess("Category created.");
             await loadCategories();
         } catch (e: unknown) {
@@ -68,6 +81,7 @@ export default function AdminCategoriesPage() {
     function startEdit(category: Category) {
         setEditingId(category.id);
         setEditingName(category.name);
+        setEditingSizeType(category.sizeType);
         setError(null);
         setSuccess(null);
     }
@@ -75,6 +89,7 @@ export default function AdminCategoriesPage() {
     function cancelEdit() {
         setEditingId(null);
         setEditingName("");
+        setEditingSizeType("CLOTHING");
     }
 
     async function handleUpdate(id: number) {
@@ -85,7 +100,7 @@ export default function AdminCategoriesPage() {
         setSuccess(null);
 
         try {
-            await updateCategory(id, editingName.trim());
+            await updateCategory(id, editingName.trim(), editingSizeType);
             setSuccess("Category updated.");
             cancelEdit();
             await loadCategories();
@@ -122,7 +137,8 @@ export default function AdminCategoriesPage() {
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold">Admin Categories</h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage product categories.
+                        Manage product categories. Each category belongs to one size
+                        family so the product form knows which sizes to offer.
                     </p>
                 </div>
 
@@ -131,7 +147,7 @@ export default function AdminCategoriesPage() {
                 <div className="rounded-lg border p-4">
                     <h2 className="text-lg font-semibold">Create category</h2>
                     <form
-                        className="mt-3 flex gap-2"
+                        className="mt-3 flex flex-col gap-2 md:flex-row md:items-center"
                         onSubmit={handleCreate}
                     >
                         <Input
@@ -140,6 +156,14 @@ export default function AdminCategoriesPage() {
                             onChange={(e) => setNewName(e.target.value)}
                             className="max-w-xs"
                         />
+                        <select
+                            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                            value={newSizeType}
+                            onChange={(e) => setNewSizeType(e.target.value as SizeType)}
+                        >
+                            <option value="CLOTHING">{SIZE_TYPE_LABELS.CLOTHING}</option>
+                            <option value="SHOE">{SIZE_TYPE_LABELS.SHOE}</option>
+                        </select>
                         <Button type="submit" disabled={saving || !newName.trim()}>
                             {saving ? "Creating..." : "Create"}
                         </Button>
@@ -177,7 +201,7 @@ export default function AdminCategoriesPage() {
                                     className="flex items-center justify-between gap-3 px-4 py-3"
                                 >
                                     {editingId === category.id ? (
-                                        <div className="flex flex-1 items-center gap-2">
+                                        <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
                                             <Input
                                                 value={editingName}
                                                 onChange={(e) =>
@@ -192,22 +216,40 @@ export default function AdminCategoriesPage() {
                                                     if (e.key === "Escape") cancelEdit();
                                                 }}
                                             />
-                                            <Button
-                                                type="button"
-                                                disabled={saving}
-                                                onClick={() =>
-                                                    void handleUpdate(category.id)
+                                            <select
+                                                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                                                value={editingSizeType}
+                                                onChange={(e) =>
+                                                    setEditingSizeType(
+                                                        e.target.value as SizeType
+                                                    )
                                                 }
                                             >
-                                                Save
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={cancelEdit}
-                                            >
-                                                Cancel
-                                            </Button>
+                                                <option value="CLOTHING">
+                                                    {SIZE_TYPE_LABELS.CLOTHING}
+                                                </option>
+                                                <option value="SHOE">
+                                                    {SIZE_TYPE_LABELS.SHOE}
+                                                </option>
+                                            </select>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    disabled={saving}
+                                                    onClick={() =>
+                                                        void handleUpdate(category.id)
+                                                    }
+                                                >
+                                                    Save
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={cancelEdit}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <>
@@ -216,7 +258,8 @@ export default function AdminCategoriesPage() {
                                                     {category.name}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    #{category.id}
+                                                    #{category.id} ·{" "}
+                                                    {SIZE_TYPE_LABELS[category.sizeType]}
                                                 </p>
                                             </div>
                                             <div className="flex gap-2">

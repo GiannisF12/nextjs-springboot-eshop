@@ -79,9 +79,7 @@ export default async function ProductDetailsPage({ params, searchParams }: Props
 
                     <div className="text-2xl font-semibold">€{Number(product.price).toFixed(2)}</div>
 
-                    <div className="flex gap-2">
-                        <AddToCartButton product={product} />
-                    </div>
+                    <AddToCartButton product={product} />
                 </div>
             </div>
         </div>

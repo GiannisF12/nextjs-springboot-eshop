@@ -1,9 +1,11 @@
 package com.giannis.eshop.controller;
 
 import com.giannis.eshop.model.Category;
+import com.giannis.eshop.model.SizeType;
 import com.giannis.eshop.repository.CategoryRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +32,10 @@ public class CategoryController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Category already exists");
         }
         return categoryRepository.save(
-                Category.builder().name(req.name().trim()).build()
+                Category.builder()
+                        .name(req.name().trim())
+                        .sizeType(req.sizeType())
+                        .build()
         );
     }
 
@@ -41,6 +46,7 @@ public class CategoryController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
         category.setName(req.name().trim());
+        category.setSizeType(req.sizeType());
         return categoryRepository.save(category);
     }
 
@@ -58,5 +64,8 @@ public class CategoryController {
         }
     }
 
-    record CategoryRequest(@NotBlank String name) {}
+    record CategoryRequest(
+            @NotBlank String name,
+            @NotNull(message = "sizeType is required (CLOTHING or SHOE)") SizeType sizeType
+    ) {}
 }

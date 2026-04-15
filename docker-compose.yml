@@ -29,6 +29,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eshop
       SPRING_DATASOURCE_USERNAME: eshop
       SPRING_DATASOURCE_PASSWORD: eshop
+      # Dev convenience: when the products table is empty on startup,
+      # insert a handful of demo products so the shop isn't empty after
+      # a fresh DB reset. See DemoDataInitializer.java.
+      # Turn this OFF for production.
+      ESHOP_SEED_DEMO_PRODUCTS: "true"
     ports:
       - "8080:8080"
     volumes:

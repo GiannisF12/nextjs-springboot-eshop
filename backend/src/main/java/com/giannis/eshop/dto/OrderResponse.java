@@ -24,6 +24,8 @@ public record OrderResponse(
             BigDecimal price,
             String image,
             String category,
+            /** Size snapshot — null for orders placed before the sizes feature. */
+            String size,
             Integer qty,
             BigDecimal lineTotal
     ) {}

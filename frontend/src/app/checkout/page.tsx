@@ -17,6 +17,46 @@ type FormState = {
     zip: string;
 };
 
+/**
+ * Turn the raw error message thrown by apiFetch into something we can
+ * actually show to a customer. Three shapes we care about:
+ *
+ *   1) "Backend is unreachable..." → real network failure, show the
+ *      Docker hint so the dev/admin knows what to fix.
+ *   2) "409 {...}" with a JSON body → HTTP error from the backend,
+ *      extract the human message out of the body.
+ *   3) Anything else → show raw, no hint.
+ */
+function formatCheckoutError(raw: string): {
+    message: string;
+    showDockerHint: boolean;
+} {
+    if (raw.toLowerCase().includes("unreachable")) {
+        return { message: raw, showDockerHint: true };
+    }
+
+    // apiFetch throws "<status> <body>" for HTTP errors. Spring's error
+    // body is JSON, so try to pull out a friendlier field.
+    const httpMatch = raw.match(/^(\d{3})\s+([\s\S]*)$/);
+    if (httpMatch) {
+        const [, , body] = httpMatch;
+        try {
+            const parsed = JSON.parse(body) as {
+                error?: string;
+                message?: string;
+            };
+            return {
+                message: parsed.error ?? parsed.message ?? body,
+                showDockerHint: false,
+            };
+        } catch {
+            return { message: body, showDockerHint: false };
+        }
+    }
+
+    return { message: raw, showDockerHint: false };
+}
+
 export default function CheckoutPage() {
     const router = useRouter();
 
@@ -74,6 +114,7 @@ export default function CheckoutPage() {
                 zip: form.zip.trim(),
                 items: items.map((it) => ({
                     productId: it.id,
+                    size: it.size, // required — backend rejects orders without a size
                     price: it.price, // JSON number -> backend BigDecimal OK
                     qty: it.qty,
                 })),
@@ -156,15 +197,23 @@ export default function CheckoutPage() {
                         />
                     </div>
 
-                    {error && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                            {error}
-                            <div className="mt-1 text-xs text-red-700/80">
-                                If you’re using Docker, make sure the backend is running:{" "}
-                                <code>docker compose up -d backend</code>
-                            </div>
-                        </div>
-                    )}
+                    {error &&
+                        (() => {
+                            const { message, showDockerHint } =
+                                formatCheckoutError(error);
+                            return (
+                                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                    {message}
+                                    {showDockerHint && (
+                                        <div className="mt-1 text-xs text-red-700/80">
+                                            If you&apos;re using Docker, make sure the
+                                            backend is running:{" "}
+                                            <code>docker compose up -d backend</code>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                     <Button type="submit" disabled={!canSubmit || submitting} className="w-full">
                         {submitting ? "Placing order..." : "Place order"}

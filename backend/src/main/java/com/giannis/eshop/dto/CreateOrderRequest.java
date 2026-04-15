@@ -16,6 +16,8 @@ public record CreateOrderRequest(
 ) {
     public record Item(
             @NotNull Long productId,
+            /** Which size variant the customer picked, e.g. "M" or "42". */
+            @NotBlank String size,
             @NotNull @Positive BigDecimal price,
             @NotNull @Positive Integer qty
     ) {}

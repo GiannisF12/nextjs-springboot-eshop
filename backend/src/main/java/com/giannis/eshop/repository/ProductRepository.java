@@ -26,4 +26,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("select p from Product p join fetch p.category where p.id = :id")
     Optional<Product> findByIdWithCategory(@Param("id") Long id);
+
+    /**
+     * Loads a product with its category AND variants in ONE query.
+     * Used by the order service so checkout can validate/decrement
+     * stock without triggering N extra SELECTs per line item.
+     */
+    @Query("""
+        select p from Product p
+        join fetch p.category
+        left join fetch p.variants
+        where p.id = :id
+    """)
+    Optional<Product> findByIdForOrder(@Param("id") Long id);
 }

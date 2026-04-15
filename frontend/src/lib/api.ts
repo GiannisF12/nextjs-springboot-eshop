@@ -5,12 +5,33 @@ export const API_INTERNAL_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL ??
     "http://localhost:8080";
 
+// --- Sizes ---
+//
+// A category is either CLOTHING or SHOE. Each type has a fixed set of
+// size labels that the admin can pick from — this mirrors the SizeType
+// enum on the backend.
+export type SizeType = "CLOTHING" | "SHOE";
+
+export const SIZE_OPTIONS: Record<SizeType, string[]> = {
+    CLOTHING: ["S", "M", "L", "XL", "XXL"],
+    SHOE: ["38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48"],
+};
+
+export type ProductVariant = {
+    id: number;
+    size: string;
+    stock: number;
+};
+
 export type Product = {
     id: number;
     title: string;
     price: number;
     image: string;
-    category: string;
+    category: string;         // category name (kept for backwards compatibility)
+    categoryId: number;
+    sizeType: SizeType;
+    variants: ProductVariant[];
 };
 
 type ProductResponse = {
@@ -20,6 +41,8 @@ type ProductResponse = {
     image: string;
     categoryId: number;
     categoryName: string;
+    sizeType: SizeType;
+    variants: ProductVariant[];
 };
 
 export type Page<T> = {
@@ -33,6 +56,7 @@ export type Page<T> = {
 export type Category = {
     id: number;
     name: string;
+    sizeType: SizeType;
 };
 
 export type AuthUserResponse = {
@@ -49,6 +73,8 @@ export type AdminProduct = {
     image: string;
     categoryId: number;
     categoryName: string;
+    sizeType: SizeType;
+    variants: ProductVariant[];
 };
 
 
@@ -59,6 +85,9 @@ function toProduct(p: ProductResponse): Product {
         price: Number(p.price),
         image: p.image,
         category: p.categoryName,
+        categoryId: p.categoryId,
+        sizeType: p.sizeType,
+        variants: p.variants ?? [],
     };
 }
 
@@ -115,17 +144,21 @@ export async function getCategories(): Promise<Category[]> {
 
 // --- Admin Categories ---
 
-export async function createCategory(name: string): Promise<Category> {
+export async function createCategory(name: string, sizeType: SizeType): Promise<Category> {
     return apiFetch<Category>("/api/categories", {
         method: "POST",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, sizeType }),
     });
 }
 
-export async function updateCategory(id: number, name: string): Promise<Category> {
+export async function updateCategory(
+    id: number,
+    name: string,
+    sizeType: SizeType
+): Promise<Category> {
     return apiFetch<Category>(`/api/categories/${id}`, {
         method: "PUT",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, sizeType }),
     });
 }
 
@@ -137,6 +170,8 @@ export async function deleteCategory(id: number): Promise<void> {
 
 export type CreateOrderItem = {
     productId: number;
+    /** Size variant the customer picked, e.g. "M" or "42". */
+    size: string;
     price: number; // backend expects BigDecimal, JSON number is OK
     qty: number;
 };
@@ -156,6 +191,8 @@ export type OrderItem = {
     price: number;
     image: string;
     category: string;
+    /** Size snapshot — null for orders placed before the sizes feature. */
+    size: string | null;
     qty: number;
     lineTotal: number;
 };
@@ -280,6 +317,8 @@ export type AdminProductPayload = {
     price: number;
     image: string;
     categoryId: number;
+    /** Per-size stock. Must have at least one entry. */
+    variants: { size: string; stock: number }[];
 };
 
 export async function createAdminProduct(

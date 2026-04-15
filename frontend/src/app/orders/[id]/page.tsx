@@ -189,9 +189,12 @@ export default async function OrderPage({ params }: Props) {
                 <div className="space-y-3 lg:col-span-2">
                     <h2 className="font-semibold">Items</h2>
 
-                    {order.items.map((it) => (
+                    {order.items.map((it, idx) => (
+                        // Key has to include size + index because one order
+                        // can have the same product in two sizes (e.g. shirt
+                        // in M and L) which would collide on productId alone.
                         <div
-                            key={it.productId}
+                            key={`${it.productId}|${it.size ?? "-"}|${idx}`}
                             className="flex items-center gap-4 rounded-xl border p-3"
                         >
                             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -208,6 +211,9 @@ export default async function OrderPage({ params }: Props) {
                                 <div className="font-medium truncate">{it.title}</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                                     <Badge variant="secondary">{it.category}</Badge>
+                                    {it.size && (
+                                        <Badge variant="outline">Size {it.size}</Badge>
+                                    )}
                                     <span>Qty: {it.qty}</span>
                                     <span>€{Number(it.price).toFixed(2)} each</span>
                                 </div>

@@ -164,14 +164,23 @@ export default function AdminOrdersPage() {
                                                 Order Items
                                             </p>
                                             <div className="space-y-1">
-                                                {order.items.map((item) => (
+                                                {order.items.map((item, idx) => (
+                                                    // Compound key: same product in
+                                                    // two sizes would collide on
+                                                    // productId alone.
                                                     <div
-                                                        key={item.productId}
+                                                        key={`${item.productId}|${item.size ?? "-"}|${idx}`}
                                                         className="flex justify-between text-sm"
                                                     >
                                                         <span>
-                                                            {item.title} x{" "}
-                                                            {item.qty}
+                                                            {item.title}
+                                                            {item.size && (
+                                                                <span className="text-muted-foreground">
+                                                                    {" "}
+                                                                    · size {item.size}
+                                                                </span>
+                                                            )}{" "}
+                                                            x {item.qty}
                                                         </span>
                                                         <span>
                                                             $

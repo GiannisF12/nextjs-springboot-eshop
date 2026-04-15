@@ -31,6 +31,14 @@ public class OrderItem {
 
     private Integer qty;
 
+    /**
+     * Which size was bought, snapshot at order time.
+     * Nullable on purpose: historical orders (placed before the
+     * sizes feature) simply don't have a size.
+     */
+    @Column(length = 10)
+    private String size;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal lineTotal;
 }
