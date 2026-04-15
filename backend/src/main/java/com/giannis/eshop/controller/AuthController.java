@@ -36,13 +36,15 @@ public class AuthController {
     public AuthUserResponse register(@Valid @RequestBody RegisterRequest req,
                                      HttpServletRequest request,
                                      HttpServletResponse response) {
-        if (userRepository.existsByEmail(req.email())) {
+        String email = normalizeEmail(req.email());
+
+        if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use");
         }
 
         AppUser user = AppUser.builder()
-                .email(req.email())
-                .name(req.name())
+                .email(email)
+                .name(req.name().trim())
                 .passwordHash(passwordEncoder.encode(req.password()))
                 .role(Role.USER)
                 .build();
@@ -51,7 +53,7 @@ public class AuthController {
 
         // Log the user in immediately after registration
         Authentication auth = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(req.email(), req.password())
+                new UsernamePasswordAuthenticationToken(email, req.password())
         );
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -67,8 +69,10 @@ public class AuthController {
     public AuthUserResponse login(@Valid @RequestBody LoginRequest req,
                                   HttpServletRequest request,
                                   HttpServletResponse response) {
+        String email = normalizeEmail(req.email());
+
         Authentication auth = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(req.email(), req.password())
+                new UsernamePasswordAuthenticationToken(email, req.password())
         );
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -78,7 +82,7 @@ public class AuthController {
         request.getSession(true); // force session creation (so JSESSIONID is issued)
         securityContextRepository.saveContext(context, request, response);
 
-        AppUser user = userRepository.findByEmail(req.email())
+        AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
@@ -114,19 +118,23 @@ public class AuthController {
         AppUser user = userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
 
-        String newEmail = req.email().trim();
+        String newEmail = normalizeEmail(req.email());
 
         // If email is actually changing, make sure it's not taken by someone else
-        if (!newEmail.equalsIgnoreCase(user.getEmail())
+        if (!newEmail.equals(user.getEmail())
                 && userRepository.existsByEmail(newEmail)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use");
         }
 
-        user.setName(req.name());
+        user.setName(req.name().trim());
         user.setEmail(newEmail);
         userRepository.save(user);
 
         return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 
     @PutMapping("/me/password")
