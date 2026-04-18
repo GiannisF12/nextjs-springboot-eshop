@@ -13,6 +13,8 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
+![CI](https://github.com/GiannisF12/nextjs-springboot-eshop/actions/workflows/docker-image.yml/badge.svg)
+
 </div>
 
 ---
@@ -36,6 +38,7 @@ A complete, decoupled e‑commerce platform featuring a **Next.js 16** storefron
 - 🗃️ **Versioned schema** — Flyway migrations for reproducible databases and seed data
 - 🐳 **One‑command startup** — `docker compose up` spins up frontend, backend, and PostgreSQL
 - ♻️ **Clean architecture** — controller / service / repository separation on the backend, App Router + Zustand stores on the frontend
+- 🤖 **Continuous Integration** — GitHub Actions runs backend tests (against a real Postgres service), frontend lint + build, and Docker image builds on every push
 
 ---
 
@@ -150,7 +153,8 @@ See `docker-compose.yml` for the full list.
 - [ ] Product search & filtering
 - [ ] Wishlist / saved items
 - [ ] Email notifications for orders
-- [ ] CI/CD pipeline (GitHub Actions)
+- [x] ~~CI pipeline (GitHub Actions)~~ ✅
+- [ ] CD pipeline — automated deployment on merge to main
 - [ ] Observability: structured logging + metrics
 
 ---
