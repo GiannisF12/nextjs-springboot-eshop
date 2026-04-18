@@ -159,6 +159,14 @@ See `docker-compose.yml` for the full list.
 
 ---
 
+## 📄 License
+
+Copyright © 2026 **Giannis Foras**. All rights reserved.
+
+This project is proprietary and confidential. The source code is publicly viewable for portfolio and demonstration purposes only — see [LICENSE](LICENSE) for full terms.
+
+---
+
 ## 👤 About the Author
 
 Built by **Giannis Foras** — entry‑level full‑stack developer focused on modern Java and TypeScript.
