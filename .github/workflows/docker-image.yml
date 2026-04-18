@@ -1,4 +1,4 @@
-name: Backend Docker Build CI
+name: CI
 
 on:
   push:
@@ -7,14 +7,66 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-backend:
+  backend-test:
+    name: Backend — Tests (Docker)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: eshop
+          POSTGRES_USER: eshop
+          POSTGRES_PASSWORD: eshop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eshop -d eshop"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests in Maven container
+        run: |
+          docker run --rm \
+            --network host \
+            -v "$PWD/backend:/app" \
+            -v "$HOME/.m2:/root/.m2" \
+            -w /app \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/eshop \
+            -e SPRING_DATASOURCE_USERNAME=eshop \
+            -e SPRING_DATASOURCE_PASSWORD=eshop \
+            maven:3.9-eclipse-temurin-25 \
+            ./mvnw -B verify
+
+  frontend-build:
+    name: Frontend — Lint & Build (Docker)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build backend Docker image
+      - name: Lint & build in Node container
         run: |
-          docker build ./backend \
-            --file ./backend/Dockerfile \
-            --tag backend-ci-test
+          docker run --rm \
+            -v "$PWD/frontend:/app" \
+            -w /app \
+            node:22-alpine \
+            sh -c "npm ci && npm run lint && npm run build"
+
+  docker-build:
+    name: Docker — Build Images
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build ./backend --file ./backend/Dockerfile --tag backend-ci-test
+
+      - name: Build frontend image
+        run: docker build ./frontend --file ./frontend/Dockerfile --tag frontend-ci-test
