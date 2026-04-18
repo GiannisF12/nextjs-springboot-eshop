@@ -1,191 +1,166 @@
-# 🛒 Fullstack E‑Shop – Next.js & Spring Boot
+<div align="center">
 
-A **full‑stack e‑commerce application** built with **Next.js** on the frontend and **Spring Boot** on the backend, designed to be **portfolio‑ready**, **production‑oriented**, and suitable as a **base for freelance projects**.
+# 🛍️ Fullstack E‑Shop
 
-This project focuses on **clean architecture**, **API‑driven design**, and **real‑world development practices** such as Dockerization and environment‑based configuration.
+**A production-oriented e‑commerce application built with Next.js & Spring Boot**
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
+![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+</div>
 
 ---
 
-## ✨ Project Goals
+## 📖 Overview
 
-* Build a modern e‑shop using **industry‑relevant technologies**
-* Separate **frontend and backend** responsibilities
-* Design a backend that can scale and be reused for other clients
-* Serve as:
+A complete, decoupled e‑commerce platform featuring a **Next.js 16** storefront, a **Spring Boot 4** REST API, and **PostgreSQL** persistence managed with **Flyway** migrations. The project demonstrates end‑to‑end ownership of a real product: authentication, product management, cart, checkout, orders, and an admin panel — all containerised with Docker Compose.
 
-  * 🎓 Portfolio project
-  * 🚀 Production‑ready base
-  * 💼 Freelance template
+> Built as a portfolio piece to showcase full‑stack engineering across modern Java and TypeScript ecosystems.
+
+---
+
+## ✨ Highlights
+
+- 🔐 **Authentication & Authorisation** — register, login, profile update, password change, role‑based access (USER / ADMIN) with Spring Security
+- 🛒 **Shopping flow** — browse products, view details, cart, checkout, order history
+- 👕 **Product variants** — per‑size stock tracking for clothing and shoes
+- 🗂️ **Category management** — nested catalog with full CRUD
+- 🧑‍💼 **Admin panel** — manage products, categories, orders, and stock
+- 🖼️ **Image uploads** — dedicated image controller with file storage
+- 🗃️ **Versioned schema** — Flyway migrations for reproducible databases and seed data
+- 🐳 **One‑command startup** — `docker compose up` spins up frontend, backend, and PostgreSQL
+- ♻️ **Clean architecture** — controller / service / repository separation on the backend, App Router + Zustand stores on the frontend
 
 ---
 
 ## 🧱 Tech Stack
 
-### Frontend
-
-* **Next.js** (React framework)
-* **TypeScript**
-* **Tailwind CSS** / **shadcn/ui** (UI & styling)
-* API consumption via REST
-
-### Backend
-
-* **Spring Boot**
-* **Java**
-* **Spring Data JPA**
-* RESTful API architecture
-
-### Database
-
-* **PostgreSQL** (planned / configurable)
-
-### DevOps / Tooling
-
-* **Docker**
-* **Docker Compose**
-* Environment‑based configuration
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Zustand, Lucide icons |
+| **Backend** | Spring Boot 4.0, Java 25, Spring Security, Spring Data JPA, Spring Validation, Lombok |
+| **Database** | PostgreSQL + Flyway migrations |
+| **Infrastructure** | Docker, Docker Compose, multi‑service networking |
+| **Tooling** | Maven, ESLint, TypeScript strict mode |
 
 ---
 
-## 🏗️ Architecture Overview
-
-The application follows a **decoupled architecture**:
+## 🏗️ Architecture
 
 ```
-[ Next.js Frontend ]
-          |
-          | REST API (HTTP / JSON)
-          v
-[ Spring Boot Backend ]
-          |
-          v
-[ PostgreSQL Database ]
+┌──────────────────────┐       REST / JSON        ┌──────────────────────┐
+│   Next.js Frontend   │ ───────────────────────▶ │  Spring Boot Backend │
+│   (App Router, SSR)  │ ◀─────────────────────── │  (Controllers/JPA)   │
+└──────────────────────┘                           └──────────┬───────────┘
+                                                              │
+                                                              ▼
+                                                    ┌──────────────────┐
+                                                    │   PostgreSQL     │
+                                                    │  (Flyway schema) │
+                                                    └──────────────────┘
 ```
 
-### Why this architecture?
-
-* Frontend and backend can scale independently
-* Backend can serve **mobile apps or other frontends**
-* Easy deployment behind **Nginx / reverse proxy**
-* Clean separation of concerns (frontend UI vs business logic)
+**Why decoupled?**
+- Frontend and backend scale and deploy independently
+- The same API can serve a mobile client or third‑party integration
+- Clear separation of concerns: presentation vs. business logic vs. persistence
 
 ---
 
-## 🔑 Core Features
+## 📂 Project Structure
 
-### Implemented / In Progress
-
-* Product‑based architecture
-* REST API communication
-* Modular backend structure (controller / service / repository)
-* Frontend consuming backend APIs
-
-### Planned Features
-
-* User authentication & authorization
-* Product categories
-* Shopping cart
-* Orders & checkout flow
-* Admin dashboard
-* Role‑based access (Admin / User)
-
----
-
-## 🔄 How the Application Works
-
-1. The **Next.js frontend** requests data (e.g. products)
-2. Requests are sent to the **Spring Boot REST API**
-3. The backend:
-
-   * Processes business logic
-   * Communicates with the database
-4. JSON responses are returned to the frontend
-5. The UI updates dynamically
-
-This flow mimics **real‑world production systems**.
+```
+nextjs-springboot-eshop/
+├── backend/                         # Spring Boot API
+│   ├── src/main/java/com/giannis/eshop/
+│   │   ├── controller/              # Auth, Product, Category, Order, Admin, Image
+│   │   ├── service/                 # Business logic
+│   │   ├── repository/              # Spring Data JPA
+│   │   ├── entity/                  # JPA entities
+│   │   └── config/                  # Security & app config
+│   └── src/main/resources/db/migration/  # Flyway migrations
+├── frontend/                        # Next.js app
+│   └── src/app/
+│       ├── products/                # Listing & detail
+│       ├── cart/ checkout/          # Shopping flow
+│       ├── account/ orders/         # Customer area
+│       └── admin/                   # Admin dashboard
+└── docker-compose.yml
+```
 
 ---
 
-## 🧑‍💻 Local Development
+## 🚀 Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose *(recommended — one command, zero setup)*
+- Or locally: Node.js 20+, Java 25, PostgreSQL 16+
 
-* Node.js
-* Java JDK
-* Docker (optional but recommended)
+### 🐳 With Docker (recommended)
 
-### Frontend
+```bash
+git clone https://github.com/GiannisF12/nextjs-springboot-eshop.git
+cd nextjs-springboot-eshop
+docker compose up --build
+```
 
+- Frontend → http://localhost:3000
+- Backend API → http://localhost:8080
+
+### 💻 Running locally
+
+**Backend**
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+**Frontend**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Backend
-
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-
----
-
-## 🐳 Running with Docker (Recommended)
-
-The project is designed to run using **Docker Compose**, enabling:
-
-* One‑command startup
-* Consistent environments
-* Easy production deployment
-
-```bash
-docker-compose up --build
-```
-
 ---
 
 ## 🔐 Environment Variables
 
-Environment variables are used to keep secrets and configs out of the codebase.
+Configuration is externalised via environment variables, keeping secrets out of the codebase.
 
-Examples:
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Database credentials |
+| `SPRING_DATASOURCE_URL` | JDBC connection string |
+| `NEXT_PUBLIC_API_URL` | Backend base URL consumed by the frontend |
 
-* Database credentials
-* API URLs
-* Application ports
-
-Separate `.env` files can be used for:
-
-* development
-* production
+See `docker-compose.yml` for the full list.
 
 ---
 
-## 🚀 Production & Deployment Notes
+## 🗺️ Roadmap
 
-This project is **production‑ready by design**:
-
-* Dockerized services
-* Stateless backend
-* Frontend suitable for CDN hosting
-* Reverse proxy (Nginx) friendly
-* Cloudflare‑ready architecture
-
-It can be deployed on:
-
-* VPS
-* Cloud VM
-* Docker‑based hosting platforms
+- [ ] Payment provider integration (Stripe)
+- [ ] Product search & filtering
+- [ ] Wishlist / saved items
+- [ ] Email notifications for orders
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Observability: structured logging + metrics
 
 ---
 
-## 🛣️ Roadmap
+## 👤 About the Author
 
-* Complete authentication system
-* Implement checkout & payments
-* Improve UI/UX
-* Add admin panel
-* CI/CD pipeline
-* Monitoring & logging
+Built by **Giannis Foras** — entry‑level full‑stack developer focused on modern Java and TypeScript.
 
+- 💼 Open to junior / entry‑level full‑stack roles
+- 📧 giannis.foras@gmail.com
+- 🔗 [GitHub](https://github.com/GiannisF12)
+
+> *Thanks for taking the time to read through this project. Feedback is always welcome.*
