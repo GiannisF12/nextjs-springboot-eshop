@@ -368,6 +368,25 @@ export type AdminStats = {
     totalRevenue: number;
 };
 
+export type AdminUser = {
+    id: number;
+    email: string;
+    name: string | null;
+    role: "USER" | "ADMIN";
+    gender: Gender | null;
+    birthday: string | null;
+    ordersCount: number;
+    totalSpent: number;
+};
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+    return apiFetch<AdminUser[]>("/api/admin/users", { cache: "no-store" });
+}
+
+export async function getAdminUser(id: number): Promise<AdminUser> {
+    return apiFetch<AdminUser>(`/api/admin/users/${id}`, { cache: "no-store" });
+}
+
 export async function getAdminStats(): Promise<AdminStats> {
     return apiFetch<AdminStats>("/api/admin/stats", { cache: "no-store" });
 }

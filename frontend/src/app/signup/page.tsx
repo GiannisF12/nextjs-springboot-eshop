@@ -14,12 +14,19 @@ export default function SignupPage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+
+        if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+
         setSubmitting(true);
 
         try {
@@ -59,6 +66,14 @@ export default function SignupPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
+                    required
+                />
+                <Input
+                    placeholder="Confirm password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     minLength={6}
                     required
                 />

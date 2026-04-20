@@ -35,4 +35,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("select sum(o.total) from Order o")
     BigDecimal sumTotalRevenue();
+
+    @Query("select count(o) from Order o where o.user.id = :userId")
+    long countByUserId(@Param("userId") Long userId);
+
+    @Query("select sum(o.total) from Order o where o.user.id = :userId")
+    BigDecimal sumTotalByUserId(@Param("userId") Long userId);
 }
