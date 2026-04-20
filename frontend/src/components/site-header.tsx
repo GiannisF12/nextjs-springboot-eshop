@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CartBadge } from "@/features/cart/cart-badge";
+import { OrdersBadge } from "@/features/orders/orders-badge";
+import { UserMenu } from "@/features/auth/user-menu";
 import { useAuth } from "@/features/auth/auth-context";
 
 export function SiteHeader() {
-    const { user, role, logout } = useAuth();
+    const { user } = useAuth();
 
     return (
         <header className="border-b">
@@ -20,30 +22,14 @@ export function SiteHeader() {
                         <Link href="/products">Products</Link>
                     </Button>
 
-                    {user && (
-                        <Button asChild variant="ghost">
-                            <Link href="/account">Account</Link>
-                        </Button>
-                    )}
-
-                    {role === "ADMIN" && (
-                        <Button asChild variant="ghost">
-                            <Link href="/admin">Admin</Link>
-                        </Button>
-                    )}
-
-                    <CartBadge />
+                    {/* Icon-pill actions */}
+                    <div className="mx-1 flex items-center gap-2">
+                        <CartBadge />
+                        {user && <OrdersBadge />}
+                    </div>
 
                     {user ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                void logout();
-                            }}
-                        >
-                            Logout
-                        </Button>
+                        <UserMenu />
                     ) : (
                         <Button asChild variant="outline">
                             <Link href="/login">Login</Link>
