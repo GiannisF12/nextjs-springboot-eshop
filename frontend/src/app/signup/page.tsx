@@ -42,7 +42,7 @@ export default function SignupPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
                 <Input
-                    placeholder="Name"
+                    placeholder="Username"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required

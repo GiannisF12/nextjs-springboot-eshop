@@ -1,227 +1,109 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-context";
-import { changePasswordApi } from "@/lib/api";
+import { UserRound, ShieldCheck, MapPin, Package } from "lucide-react";
 
-export default function AccountPage() {
-    const router = useRouter();
-    const { user, loading: authLoading, updateProfile, logout } = useAuth();
-
-    // Profile form state
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [savingProfile, setSavingProfile] = useState(false);
-    const [profileError, setProfileError] = useState<string | null>(null);
-    const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
-
-    // Password form state
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [savingPassword, setSavingPassword] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (authLoading) return;
-        if (!user) {
-            router.push("/login");
-            return;
-        }
-        setName(user.name ?? "");
-        setEmail(user.email);
-    }, [user, authLoading, router]);
-
-    async function handleProfileSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setProfileError(null);
-        setProfileSuccess(null);
-        setSavingProfile(true);
-
-        const oldEmail = user?.email;
-
-        try {
-            await updateProfile(name, email);
-
-            // If the email actually changed, the session principal is now stale.
-            // Log out and bounce to login so the user can re-authenticate.
-            if (oldEmail && oldEmail.toLowerCase() !== email.trim().toLowerCase()) {
-                sessionStorage.setItem(
-                    "loginNotice",
-                    "Your email was updated. Please log in again."
-                );
-                await logout();
-                router.push("/login");
-                return;
-            }
-
-            setProfileSuccess("Profile updated.");
-        } catch (err: unknown) {
-            if (err instanceof Error && err.message.startsWith("409")) {
-                setProfileError("This email is already in use.");
-            } else {
-                setProfileError(err instanceof Error ? err.message : "Update failed.");
-            }
-        } finally {
-            setSavingProfile(false);
-        }
+function getInitials(name: string | null | undefined, email: string) {
+    if (name && name.trim().length > 0) {
+        const parts = name.trim().split(/\s+/);
+        const first = parts[0]?.[0] ?? "";
+        const second = parts[1]?.[0] ?? "";
+        return (first + second).toUpperCase();
     }
+    return email.slice(0, 2).toUpperCase();
+}
 
-    async function handlePasswordSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setPasswordError(null);
-        setPasswordSuccess(null);
+export default function AccountOverviewPage() {
+    const { user } = useAuth();
+    if (!user) return null; // layout handles loading/redirect
 
-        if (newPassword !== confirmPassword) {
-            setPasswordError("New passwords do not match.");
-            return;
-        }
-        if (newPassword.length < 6) {
-            setPasswordError("New password must be at least 6 characters.");
-            return;
-        }
-
-        setSavingPassword(true);
-        try {
-            await changePasswordApi(currentPassword, newPassword);
-            setPasswordSuccess("Password changed successfully.");
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-        } catch (err: unknown) {
-            if (err instanceof Error && err.message.startsWith("400")) {
-                setPasswordError("Current password is incorrect.");
-            } else {
-                setPasswordError(err instanceof Error ? err.message : "Password change failed.");
-            }
-        } finally {
-            setSavingPassword(false);
-        }
-    }
-
-    if (authLoading || !user) {
-        return <p className="text-sm text-muted-foreground">Loading...</p>;
-    }
+    const initials = getInitials(user.name, user.email);
 
     return (
-        <div className="mx-auto max-w-md space-y-6">
-            <div className="space-y-1">
-                <h1 className="text-2xl font-semibold">My Account</h1>
-                <p className="text-sm text-muted-foreground">
-                    Manage your profile information.
-                </p>
-            </div>
-
-            {/* Profile form */}
-            <div className="rounded-lg border p-4">
-                <h2 className="text-lg font-semibold">Profile</h2>
-                <form className="mt-4 space-y-3" onSubmit={handleProfileSubmit}>
-                    <div>
-                        <label className="text-sm font-medium">Name</label>
-                        <Input
-                            className="mt-1"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
+        <div className="space-y-6">
+            {/* Profile summary card */}
+            <Card>
+                <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-2xl font-semibold text-primary ring-2 ring-primary/10">
+                        {initials}
                     </div>
-                    <div>
-                        <label className="text-sm font-medium">Email</label>
-                        <Input
-                            className="mt-1"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Changing your email will log you out.
+                    <div className="flex-1 space-y-1">
+                        <p className="text-lg font-semibold">
+                            {user.name || "No username set"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                            Role: <span className="font-medium">{user.role}</span>
                         </p>
                     </div>
-
-                    <Button type="submit" disabled={savingProfile}>
-                        {savingProfile ? "Saving..." : "Save changes"}
-                    </Button>
-                </form>
-
-                {profileError && (
-                    <p className="mt-3 text-sm text-red-600">{profileError}</p>
-                )}
-                {profileSuccess && (
-                    <p className="mt-3 text-sm text-green-700">{profileSuccess}</p>
-                )}
-            </div>
-
-            {/* Password form */}
-            <div className="rounded-lg border p-4">
-                <h2 className="text-lg font-semibold">Change Password</h2>
-                <form className="mt-4 space-y-3" onSubmit={handlePasswordSubmit}>
-                    <div>
-                        <label className="text-sm font-medium">
-                            Current password
-                        </label>
-                        <Input
-                            className="mt-1"
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">New password</label>
-                        <Input
-                            className="mt-1"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required
-                            minLength={6}
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">
-                            Confirm new password
-                        </label>
-                        <Input
-                            className="mt-1"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            minLength={6}
-                        />
-                    </div>
-
-                    <Button type="submit" disabled={savingPassword}>
-                        {savingPassword ? "Saving..." : "Update password"}
-                    </Button>
-                </form>
-
-                {passwordError && (
-                    <p className="mt-3 text-sm text-red-600">{passwordError}</p>
-                )}
-                {passwordSuccess && (
-                    <p className="mt-3 text-sm text-green-700">{passwordSuccess}</p>
-                )}
-            </div>
-
-            <div className="rounded-lg border p-4">
-                <h2 className="text-lg font-semibold">Quick Links</h2>
-                <div className="mt-3 flex gap-2">
                     <Button asChild variant="outline">
-                        <Link href="/account/orders">My Orders</Link>
+                        <Link href="/account/profile">Edit profile</Link>
                     </Button>
-                    <Button asChild variant="outline">
-                        <Link href="/products">Browse Products</Link>
-                    </Button>
-                </div>
+                </CardContent>
+            </Card>
+
+            {/* Quick action grid */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <QuickLinkCard
+                    href="/account/profile"
+                    icon={UserRound}
+                    title="Profile"
+                    description="Update your username and email"
+                />
+                <QuickLinkCard
+                    href="/account/security"
+                    icon={ShieldCheck}
+                    title="Security"
+                    description="Change your password"
+                />
+                <QuickLinkCard
+                    href="/account/addresses"
+                    icon={MapPin}
+                    title="Addresses"
+                    description="Manage shipping addresses"
+                />
+                <QuickLinkCard
+                    href="/account/orders"
+                    icon={Package}
+                    title="Orders"
+                    description="View your order history"
+                />
             </div>
         </div>
+    );
+}
+
+function QuickLinkCard({
+    href,
+    icon: Icon,
+    title,
+    description,
+}: {
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+}) {
+    return (
+        <Link href={href} className="group">
+            <Card className="h-full transition-all hover:border-primary/50 hover:shadow-md">
+                <CardHeader>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                        <Icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="mt-3 text-base">{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                </CardHeader>
+            </Card>
+        </Link>
     );
 }
