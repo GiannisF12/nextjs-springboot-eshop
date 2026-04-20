@@ -59,11 +59,15 @@ export type Category = {
     sizeType: SizeType;
 };
 
+export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
+
 export type AuthUserResponse = {
     id: number;
     email: string;
     name: string | null;
     role: "USER" | "ADMIN";
+    gender: Gender | null;
+    birthday: string | null; // ISO date (YYYY-MM-DD)
 };
 
 export type AdminProduct = {
@@ -253,10 +257,15 @@ export async function meApi(): Promise<AuthUserResponse> {
     return apiFetch<AuthUserResponse>("/api/auth/me", { cache: "no-store" });
 }
 
-export async function updateProfileApi(name: string, email: string): Promise<AuthUserResponse> {
+export async function updateProfileApi(
+    name: string,
+    email: string,
+    gender: Gender | null,
+    birthday: string | null
+): Promise<AuthUserResponse> {
     return apiFetch<AuthUserResponse>("/api/auth/me", {
         method: "PUT",
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, gender, birthday }),
     });
 }
 

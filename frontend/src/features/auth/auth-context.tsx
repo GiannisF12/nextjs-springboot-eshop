@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
-import type { AuthUser, Role } from "@/lib/auth-types";
+import type { AuthUser, Gender, Role } from "@/lib/auth-types";
 import { loginApi, logoutApi, meApi, registerApi, updateProfileApi } from "@/lib/api";
 
 type AuthContextType = {
@@ -10,7 +10,12 @@ type AuthContextType = {
     loading: boolean;
     login: (email: string, password: string) => Promise<AuthUser>;
     register: (email: string, password: string, name: string) => Promise<AuthUser>;
-    updateProfile: (name: string, email: string) => Promise<AuthUser>;
+    updateProfile: (
+        name: string,
+        email: string,
+        gender: Gender | null,
+        birthday: string | null
+    ) => Promise<AuthUser>;
     logout: () => Promise<void>;
 };
 
@@ -53,8 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return newUser;
     }
 
-    async function updateProfile(name: string, email: string) {
-        const updated = await updateProfileApi(name, email);
+    async function updateProfile(
+        name: string,
+        email: string,
+        gender: Gender | null,
+        birthday: string | null
+    ) {
+        const updated = await updateProfileApi(name, email, gender, birthday);
         setUser(updated);
         return updated;
     }

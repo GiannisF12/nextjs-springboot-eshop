@@ -4,6 +4,7 @@ import com.giannis.eshop.dto.AuthUserResponse;
 import com.giannis.eshop.dto.LoginRequest;
 import com.giannis.eshop.dto.RegisterRequest;
 import com.giannis.eshop.model.AppUser;
+import com.giannis.eshop.model.Gender;
 import com.giannis.eshop.model.Role;
 import com.giannis.eshop.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,11 +21,16 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.time.Period;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
+
+    private static final int MIN_AGE_YEARS = 16;
 
     private final AuthenticationManager authManager;
     private final UserRepository userRepository;
@@ -62,7 +68,7 @@ public class AuthController {
         request.getSession(true);
         securityContextRepository.saveContext(context, request, response);
 
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+        return toResponse(user);
     }
 
     @PostMapping("/login")
@@ -85,7 +91,7 @@ public class AuthController {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+        return toResponse(user);
     }
 
     @PostMapping("/logout")
@@ -100,12 +106,12 @@ public class AuthController {
     @GetMapping("/me")
     public AuthUserResponse me(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
         }
         String email = auth.getName();
         AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in"));
+        return toResponse(user);
     }
 
     @PutMapping("/me")
@@ -126,15 +132,42 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use");
         }
 
+        // Age check: when birthday is provided, user must be at least MIN_AGE_YEARS old.
+        if (req.birthday() != null) {
+            if (req.birthday().isAfter(LocalDate.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Birthday cannot be in the future");
+            }
+            int age = Period.between(req.birthday(), LocalDate.now()).getYears();
+            if (age < MIN_AGE_YEARS) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "You must be at least " + MIN_AGE_YEARS + " years old."
+                );
+            }
+        }
+
         user.setName(req.name().trim());
         user.setEmail(newEmail);
+        user.setGender(req.gender());
+        user.setBirthday(req.birthday());
         userRepository.save(user);
 
-        return new AuthUserResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
+        return toResponse(user);
     }
 
     private static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private static AuthUserResponse toResponse(AppUser user) {
+        return new AuthUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getRole(),
+                user.getGender(),
+                user.getBirthday()
+        );
     }
 
     @PutMapping("/me/password")
@@ -158,7 +191,9 @@ public class AuthController {
 
     record UpdateProfileRequest(
             @jakarta.validation.constraints.NotBlank String name,
-            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email String email
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email String email,
+            Gender gender,          // optional
+            LocalDate birthday      // optional (ISO yyyy-MM-dd)
     ) {}
 
     record ChangePasswordRequest(

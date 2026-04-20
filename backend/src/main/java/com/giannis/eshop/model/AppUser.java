@@ -3,6 +3,8 @@ package com.giannis.eshop.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "users")
 @Getter @Setter
@@ -26,5 +28,11 @@ public class AppUser {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private Gender gender;
+
+    private LocalDate birthday;
 
 }
