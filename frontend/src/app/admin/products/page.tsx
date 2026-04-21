@@ -42,6 +42,23 @@ const EMPTY_FORM: ProductFormState = {
     categoryId: "",
 };
 
+/**
+ * A variant with this much stock or less is considered "low" and gets
+ * a yellow warning color. Zero stock is red regardless.
+ * Adjust here if the admin wants a different threshold.
+ */
+const LOW_STOCK_THRESHOLD = 3;
+
+function stockClass(stock: number): string {
+    if (stock === 0) return "text-red-600 font-semibold";
+    if (stock <= LOW_STOCK_THRESHOLD) return "text-yellow-600 font-semibold";
+    return "";
+}
+
+function hasLowStock(product: AdminProduct): boolean {
+    return product.variants.some((v) => v.stock <= LOW_STOCK_THRESHOLD);
+}
+
 /** Build a fresh list of variant rows for a given size type. */
 function emptyVariantsFor(sizeType: SizeType): VariantFormRow[] {
     return SIZE_OPTIONS[sizeType].map((size) => ({
@@ -62,11 +79,22 @@ export default function AdminProductsPage() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showLowStockOnly, setShowLowStockOnly] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const editingProduct = useMemo(
         () => products.find((p) => p.id === editingId) ?? null,
         [products, editingId]
+    );
+
+    const lowStockCount = useMemo(
+        () => products.filter(hasLowStock).length,
+        [products]
+    );
+
+    const visibleProducts = useMemo(
+        () => (showLowStockOnly ? products.filter(hasLowStock) : products),
+        [products, showLowStockOnly]
     );
 
     async function loadData() {
@@ -258,12 +286,26 @@ export default function AdminProductsPage() {
         }
     }
 
-    // Compact summary string shown on each row in the products list.
-    function variantSummary(product: AdminProduct): string {
-        if (product.variants.length === 0) return "no sizes";
-        return product.variants
-            .map((v) => `${v.size}:${v.stock}`)
-            .join(" · ");
+    // Compact list of size:stock pairs, color-coded per stock level.
+    // Extracted to a component so each pair gets its own <span>.
+    function VariantSummary({ product }: { product: AdminProduct }) {
+        if (product.variants.length === 0) {
+            return (
+                <span className="text-xs text-muted-foreground">no sizes</span>
+            );
+        }
+        return (
+            <p className="text-xs text-muted-foreground">
+                {product.variants.map((v, idx) => (
+                    <span key={v.size}>
+                        <span className={stockClass(v.stock)}>
+                            {v.size}:{v.stock}
+                        </span>
+                        {idx < product.variants.length - 1 && " · "}
+                    </span>
+                ))}
+            </p>
+        );
     }
 
     return (
@@ -400,9 +442,31 @@ export default function AdminProductsPage() {
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 {success && <p className="text-sm text-green-700">{success}</p>}
 
+                {lowStockCount > 0 && (
+                    <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+                        <span>
+                            ⚠️ {lowStockCount}{" "}
+                            {lowStockCount === 1 ? "product has" : "products have"}{" "}
+                            low or out-of-stock sizes (≤ {LOW_STOCK_THRESHOLD}).
+                        </span>
+                    </div>
+                )}
+
                 <div className="rounded-lg border">
-                    <div className="flex items-center justify-between border-b px-4 py-3">
-                        <h2 className="text-lg font-semibold">Products</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-lg font-semibold">Products</h2>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={showLowStockOnly}
+                                    onChange={(e) =>
+                                        setShowLowStockOnly(e.target.checked)
+                                    }
+                                />
+                                Show low stock only
+                            </label>
+                        </div>
                         <Button type="button" variant="outline" onClick={() => void loadData()}>
                             Refresh
                         </Button>
@@ -411,12 +475,14 @@ export default function AdminProductsPage() {
                     <div className="divide-y">
                         {loading ? (
                             <p className="px-4 py-4 text-sm text-muted-foreground">Loading...</p>
-                        ) : products.length === 0 ? (
+                        ) : visibleProducts.length === 0 ? (
                             <p className="px-4 py-4 text-sm text-muted-foreground">
-                                No products found.
+                                {showLowStockOnly
+                                    ? "No low-stock products. All inventory healthy."
+                                    : "No products found."}
                             </p>
                         ) : (
-                            products.map((product) => (
+                            visibleProducts.map((product) => (
                                 <div
                                     key={product.id}
                                     className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between"
@@ -445,9 +511,7 @@ export default function AdminProductsPage() {
                                                 #{product.id} · {product.categoryName} · $
                                                 {product.price.toFixed(2)}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {variantSummary(product)}
-                                            </p>
+                                            <VariantSummary product={product} />
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
