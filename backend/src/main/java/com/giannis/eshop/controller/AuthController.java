@@ -77,9 +77,19 @@ public class AuthController {
                                   HttpServletResponse response) {
         String email = normalizeEmail(req.email());
 
-        Authentication auth = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, req.password())
-        );
+        Authentication auth;
+        try {
+            auth = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, req.password())
+            );
+        } catch (LockedException e) {
+            // Banned users get a specific 403 so the frontend can show
+            // a clear "account banned" message instead of a generic error.
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "This account has been banned. Please contact support."
+            );
+        }
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(auth);

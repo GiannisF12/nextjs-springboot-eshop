@@ -35,4 +35,12 @@ public class AppUser {
 
     private LocalDate birthday;
 
+    /**
+     * When {@code true}, Spring Security marks this user's
+     * account as locked and rejects authentication attempts
+     * (see {@code SecurityConfig#userDetailsService}).
+     */
+    @Column(nullable = false)
+    private boolean banned;
+
 }

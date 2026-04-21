@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
-import { type AdminUser, getAdminUser } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/auth-context";
+import {
+    type AdminUser,
+    getAdminUser,
+    setAdminUserBanned,
+} from "@/lib/api";
 
 const GENDER_LABELS: Record<string, string> = {
     MALE: "Male",
@@ -17,10 +23,16 @@ const GENDER_LABELS: Record<string, string> = {
 export default function AdminUserDetailPage() {
     const params = useParams<{ id: string }>();
     const id = Number(params.id);
+    const { user: currentAdmin } = useAuth();
 
     const [user, setUser] = useState<AdminUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [toggling, setToggling] = useState(false);
+
+    const isSelf =
+        !!currentAdmin && !!user && currentAdmin.email === user.email;
+    const isAdmin = user?.role === "ADMIN";
 
     useEffect(() => {
         if (!Number.isFinite(id)) {
@@ -39,6 +51,31 @@ export default function AdminUserDetailPage() {
         }
         void load();
     }, [id]);
+
+    async function handleToggleBan() {
+        if (!user) return;
+        const nextBanned = !user.banned;
+
+        const ok = window.confirm(
+            nextBanned
+                ? `Ban ${user.name || user.email}? They will no longer be able to log in. Their orders and data are preserved.`
+                : `Unban ${user.name || user.email}? They will be able to log in again.`
+        );
+        if (!ok) return;
+
+        setToggling(true);
+        setError(null);
+        try {
+            const updated = await setAdminUserBanned(user.id, nextBanned);
+            setUser(updated);
+        } catch (e: unknown) {
+            setError(
+                e instanceof Error ? e.message : "Failed to update ban status."
+            );
+        } finally {
+            setToggling(false);
+        }
+    }
 
     return (
         <AdminGuard>
@@ -102,7 +139,55 @@ export default function AdminUserDetailPage() {
                                     label="Total spent"
                                     value={`$${Number(user.totalSpent).toFixed(2)}`}
                                 />
+                                <Row
+                                    label="Status"
+                                    value={user.banned ? "Banned" : "Active"}
+                                />
                             </dl>
+                        </div>
+
+                        <div className="rounded-lg border md:col-span-2">
+                            <div className="border-b px-4 py-3">
+                                <h2 className="text-lg font-semibold">
+                                    Account actions
+                                </h2>
+                            </div>
+                            <div className="space-y-3 px-4 py-4">
+                                {isAdmin ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        Admins cannot be banned.
+                                    </p>
+                                ) : isSelf ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        You cannot ban your own account.
+                                    </p>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="button"
+                                            variant={user.banned ? "default" : "destructive"}
+                                            className={
+                                                user.banned
+                                                    ? "bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500/30"
+                                                    : undefined
+                                            }
+                                            onClick={() => void handleToggleBan()}
+                                            disabled={toggling}
+                                        >
+                                            {toggling
+                                                ? "Saving..."
+                                                : user.banned
+                                                  ? "Unban user"
+                                                  : "Ban user"}
+                                        </Button>
+                                        <p className="text-sm text-muted-foreground">
+                                            {user.banned
+                                                ? "This user cannot log in. Unbanning will restore access."
+                                                : "Banning prevents login but keeps their orders and history intact."}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ) : null}

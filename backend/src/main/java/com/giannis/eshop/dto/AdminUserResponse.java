@@ -14,6 +14,7 @@ public record AdminUserResponse(
         Role role,
         Gender gender,
         LocalDate birthday,
+        boolean banned,
         long ordersCount,
         BigDecimal totalSpent
 ) {
@@ -25,6 +26,7 @@ public record AdminUserResponse(
                 u.getRole(),
                 u.getGender(),
                 u.getBirthday(),
+                u.isBanned(),
                 ordersCount,
                 totalSpent == null ? BigDecimal.ZERO : totalSpent
         );

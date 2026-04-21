@@ -51,6 +51,10 @@ public class SecurityConfig {
                         .username(u.getEmail())
                         .password(u.getPasswordHash())
                         .roles(u.getRole().name()) // USER / ADMIN -> Spring adds ROLE_
+                        // Banned users are treated as "account locked" — Spring's
+                        // AuthenticationProvider throws LockedException on login
+                        // before the password is even checked.
+                        .accountLocked(u.isBanned())
                         .build()
                 )
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));

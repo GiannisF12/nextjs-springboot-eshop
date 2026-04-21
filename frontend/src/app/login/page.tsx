@@ -34,8 +34,17 @@ export default function LoginPage() {
         try {
             const user = await login(email, password);
             router.push(user.role === "ADMIN" ? "/admin" : "/");
-        } catch {
-            setError("Invalid email or password.");
+        } catch (err: unknown) {
+            // Backend returns 403 specifically for banned accounts so we can
+            // show a distinct message. Everything else stays generic to avoid
+            // leaking whether the email exists (user-enumeration vector).
+            if (err instanceof Error && err.message.startsWith("403")) {
+                setError(
+                    "This account has been banned. Please contact support."
+                );
+            } else {
+                setError("Invalid email or password.");
+            }
         } finally {
             setSubmitting(false);
         }

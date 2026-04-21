@@ -74,15 +74,22 @@ export default function AdminUsersPage() {
                                             &middot; ${Number(u.totalSpent).toFixed(2)} spent
                                         </p>
                                     </div>
-                                    <span
-                                        className={`inline-block w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                            u.role === "ADMIN"
-                                                ? "bg-purple-100 text-purple-800"
-                                                : "bg-gray-100 text-gray-800"
-                                        }`}
-                                    >
-                                        {u.role}
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {u.banned && (
+                                            <span className="inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                                                BANNED
+                                            </span>
+                                        )}
+                                        <span
+                                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                                u.role === "ADMIN"
+                                                    ? "bg-purple-100 text-purple-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                            }`}
+                                        >
+                                            {u.role}
+                                        </span>
+                                    </div>
                                 </Link>
                             ))
                         )}
