@@ -375,6 +375,7 @@ export type AdminUser = {
     role: "USER" | "ADMIN";
     gender: Gender | null;
     birthday: string | null;
+    banned: boolean;
     ordersCount: number;
     totalSpent: number;
 };
@@ -385,6 +386,53 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 
 export async function getAdminUser(id: number): Promise<AdminUser> {
     return apiFetch<AdminUser>(`/api/admin/users/${id}`, { cache: "no-store" });
+}
+
+export async function setAdminUserBanned(
+    id: number,
+    banned: boolean
+): Promise<AdminUser> {
+    return apiFetch<AdminUser>(`/api/admin/users/${id}/ban`, {
+        method: "PATCH",
+        body: JSON.stringify({ banned }),
+    });
+}
+
+// --- Admin Analytics ---
+
+export type RevenueByMonth = {
+    month: string; // "YYYY-MM"
+    revenue: number;
+};
+
+export type TopProduct = {
+    productId: number;
+    title: string;
+    qtySold: number;
+    revenue: number;
+};
+
+export type OrderStatusCount = {
+    status: OrderStatus;
+    count: number;
+};
+
+export async function getRevenueByMonth(): Promise<RevenueByMonth[]> {
+    return apiFetch<RevenueByMonth[]>("/api/admin/analytics/revenue-by-month", {
+        cache: "no-store",
+    });
+}
+
+export async function getTopProducts(): Promise<TopProduct[]> {
+    return apiFetch<TopProduct[]>("/api/admin/analytics/top-products", {
+        cache: "no-store",
+    });
+}
+
+export async function getOrderStatusCounts(): Promise<OrderStatusCount[]> {
+    return apiFetch<OrderStatusCount[]>("/api/admin/analytics/order-status", {
+        cache: "no-store",
+    });
 }
 
 export async function getAdminStats(): Promise<AdminStats> {

@@ -10,6 +10,7 @@ import {
     getAdminOrders,
     updateOrderStatus,
 } from "@/lib/api";
+import { STATUS_COLORS } from "@/lib/order-status-colors";
 
 const STATUS_OPTIONS: OrderStatus[] = [
     "NEW",
@@ -18,14 +19,6 @@ const STATUS_OPTIONS: OrderStatus[] = [
     "DELIVERED",
     "CANCELLED",
 ];
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-    NEW: "bg-blue-100 text-blue-800",
-    PROCESSING: "bg-yellow-100 text-yellow-800",
-    SHIPPED: "bg-purple-100 text-purple-800",
-    DELIVERED: "bg-green-100 text-green-800",
-    CANCELLED: "bg-red-100 text-red-800",
-};
 
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState<OrderResponse[]>([]);

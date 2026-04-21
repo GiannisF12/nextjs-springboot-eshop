@@ -1,5 +1,6 @@
 package com.giannis.eshop.repository;
 
+import com.giannis.eshop.dto.OrderStatusCountResponse;
 import com.giannis.eshop.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +42,27 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("select sum(o.total) from Order o where o.user.id = :userId")
     BigDecimal sumTotalByUserId(@Param("userId") Long userId);
+
+    /**
+     * Revenue grouped by calendar month for the last 12 months.
+     * Native query because JPQL doesn't expose {@code date_trunc}, and
+     * formatting the month on the DB keeps the response flat and portable.
+     * Each row is {@code [month:String, revenue:BigDecimal]}.
+     */
+    @Query(value = """
+        SELECT TO_CHAR(date_trunc('month', created_at), 'YYYY-MM') AS month,
+               COALESCE(SUM(total), 0)                              AS revenue
+        FROM orders
+        WHERE created_at >= (CURRENT_DATE - INTERVAL '12 months')
+        GROUP BY 1
+        ORDER BY 1
+    """, nativeQuery = true)
+    List<Object[]> findRevenueByMonthRaw();
+
+    @Query("""
+        select new com.giannis.eshop.dto.OrderStatusCountResponse(o.status, count(o))
+        from Order o
+        group by o.status
+    """)
+    List<OrderStatusCountResponse> countByStatusGrouped();
 }
