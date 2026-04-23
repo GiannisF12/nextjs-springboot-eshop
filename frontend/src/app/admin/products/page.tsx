@@ -16,6 +16,7 @@ import {
     getAdminProducts,
     getCategories,
     updateAdminProduct,
+    updateAdminProductVariantStock,
     uploadImage,
 } from "@/lib/api";
 
@@ -80,6 +81,12 @@ export default function AdminProductsPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+    // Inline stock editor state. Only one variant can be edited at a time —
+    // `editingVariantId` is the variant whose pill is currently swapped for
+    // an input. `variantDraft` is the raw input string (parsed on save).
+    const [editingVariantId, setEditingVariantId] = useState<number | null>(null);
+    const [variantDraft, setVariantDraft] = useState("");
+    const [savingVariantId, setSavingVariantId] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const editingProduct = useMemo(
@@ -286,8 +293,53 @@ export default function AdminProductsPage() {
         }
     }
 
+    function startEditVariant(variantId: number, currentStock: number) {
+        setEditingVariantId(variantId);
+        setVariantDraft(String(currentStock));
+        setError(null);
+        setSuccess(null);
+    }
+
+    function cancelEditVariant() {
+        setEditingVariantId(null);
+        setVariantDraft("");
+    }
+
+    async function saveVariantStock(productId: number, variantId: number) {
+        const parsed = Number(variantDraft);
+        if (!Number.isInteger(parsed) || parsed < 0) {
+            setError("Stock must be a non-negative whole number.");
+            return;
+        }
+
+        setSavingVariantId(variantId);
+        setError(null);
+
+        try {
+            const updated = await updateAdminProductVariantStock(
+                productId,
+                variantId,
+                parsed
+            );
+            // Swap just this product in the list — avoids a full reload
+            // and keeps the admin's scroll position.
+            setProducts((prev) =>
+                prev.map((p) => (p.id === productId ? updated : p))
+            );
+            // Guard: if the admin has already moved on to a different
+            // variant by the time this request resolves, don't yank their
+            // new editor closed.
+            setEditingVariantId((cur) => (cur === variantId ? null : cur));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Stock update failed.");
+        } finally {
+            setSavingVariantId(null);
+        }
+    }
+
     // Compact list of size:stock pairs, color-coded per stock level.
-    // Extracted to a component so each pair gets its own <span>.
+    // Clicking a pair swaps it for a number input so the admin can
+    // restock a single size without opening the full edit form.
     function VariantSummary({ product }: { product: AdminProduct }) {
         if (product.variants.length === 0) {
             return (
@@ -296,14 +348,56 @@ export default function AdminProductsPage() {
         }
         return (
             <p className="text-xs text-muted-foreground">
-                {product.variants.map((v, idx) => (
-                    <span key={v.size}>
-                        <span className={stockClass(v.stock)}>
-                            {v.size}:{v.stock}
+                {product.variants.map((v, idx) => {
+                    const isEditing = editingVariantId === v.id;
+                    const isSaving = savingVariantId === v.id;
+                    return (
+                        <span key={v.size}>
+                            {isEditing ? (
+                                <span className="inline-flex items-center gap-1 align-middle">
+                                    <span className="font-medium">{v.size}:</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        autoFocus
+                                        disabled={isSaving}
+                                        value={variantDraft}
+                                        onChange={(e) => setVariantDraft(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                void saveVariantStock(product.id, v.id);
+                                            } else if (e.key === "Escape") {
+                                                e.preventDefault();
+                                                cancelEditVariant();
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            // Save on blur so the admin can
+                                            // just click away — but skip if
+                                            // a save is already running.
+                                            if (!isSaving) {
+                                                void saveVariantStock(product.id, v.id);
+                                            }
+                                        }}
+                                        className="h-5 w-14 rounded border bg-background px-1 text-xs"
+                                    />
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => startEditVariant(v.id, v.stock)}
+                                    className={`rounded px-1 hover:bg-muted ${stockClass(v.stock)}`}
+                                    title="Click to edit stock"
+                                >
+                                    {v.size}:{v.stock}
+                                </button>
+                            )}
+                            {idx < product.variants.length - 1 && " · "}
                         </span>
-                        {idx < product.variants.length - 1 && " · "}
-                    </span>
-                ))}
+                    );
+                })}
             </p>
         );
     }

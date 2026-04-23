@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.giannis.eshop.dto.CreateProductRequest;
 import com.giannis.eshop.dto.UpdateProductRequest;
+import com.giannis.eshop.dto.UpdateVariantStockRequest;
 import jakarta.validation.Valid;
 
 @RestController
@@ -54,6 +55,15 @@ public class ProductController {
             @Valid @RequestBody UpdateProductRequest request
     ) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{productId}/variants/{variantId}")
+    public ProductResponse updateVariantStock(
+            @PathVariable Long productId,
+            @PathVariable Long variantId,
+            @Valid @RequestBody UpdateVariantStockRequest request
+    ) {
+        return service.updateVariantStock(productId, variantId, request.stock());
     }
 
     @DeleteMapping("/{id}")

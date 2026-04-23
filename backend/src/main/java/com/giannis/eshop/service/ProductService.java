@@ -142,6 +142,26 @@ public class ProductService {
         return toResponse(repository.save(product));
     }
 
+    /**
+     * Inline stock update from the admin products list — the admin clicks a
+     * size:stock pill and types a new number without opening the full form.
+     * Verifies the variant actually belongs to the given product so callers
+     * can't update arbitrary variants by guessing IDs.
+     */
+    @Transactional
+    public ProductResponse updateVariantStock(Long productId, Long variantId, Integer stock) {
+        Product product = repository.findByIdWithCategory(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+
+        ProductVariant variant = product.getVariants().stream()
+                .filter(v -> v.getId().equals(variantId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variant not found for this product"));
+
+        variant.setStock(stock);
+        return toResponse(product);
+    }
+
     @Transactional
     public void delete(Long id) {
         if (!repository.existsById(id)) {

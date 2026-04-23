@@ -353,6 +353,25 @@ export async function deleteAdminProduct(id: number): Promise<void> {
     await apiFetch(`/api/products/${id}`, { method: "DELETE" });
 }
 
+/**
+ * Inline stock update for a single variant — used by the admin
+ * products list so the admin can restock a size without opening
+ * the full edit form.
+ */
+export async function updateAdminProductVariantStock(
+    productId: number,
+    variantId: number,
+    stock: number
+): Promise<AdminProduct> {
+    return apiFetch<AdminProduct>(
+        `/api/products/${productId}/variants/${variantId}`,
+        {
+            method: "PATCH",
+            body: JSON.stringify({ stock }),
+        }
+    );
+}
+
 // --- My Orders (logged-in user) ---
 
 export async function getMyOrders(): Promise<OrderResponse[]> {
