@@ -124,3 +124,38 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Print support for the admin packing slip.
+ *
+ * .print-only is rendered but hidden on screen. At print time we hide
+ * every other element on the page with `visibility: hidden`, then make
+ * the print slip visible and pop it to the top-left of the sheet so it
+ * fills the page without any of the surrounding app chrome.
+ *
+ * Note: we use `visibility` (not `display: none`) on the rest of the
+ * page so the print slip, which is a descendant of the same tree, can
+ * still override it. Using `display: none` on ancestors would hide the
+ * slip no matter what we do here.
+ */
+.print-only {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-only {
+    display: block !important;
+    visibility: visible;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 1.5rem;
+  }
+  .print-only * {
+    visibility: visible;
+  }
+}

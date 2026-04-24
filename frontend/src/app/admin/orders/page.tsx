@@ -7,6 +7,7 @@ import { AdminNav } from "@/features/admin/admin-nav";
 import {
     type OrderResponse,
     type OrderStatus,
+    type OrderStatusChange,
     getAdminOrders,
     updateOrderStatus,
 } from "@/lib/api";
@@ -20,12 +21,195 @@ const STATUS_OPTIONS: OrderStatus[] = [
     "CANCELLED",
 ];
 
+const STATUS_LABELS: Record<OrderStatus, string> = {
+    NEW: "Placed",
+    PROCESSING: "Processing",
+    SHIPPED: "Shipped",
+    DELIVERED: "Delivered",
+    CANCELLED: "Cancelled",
+};
+
+/** Short, locale-aware timestamp used in the status timeline. */
+function formatStep(iso: string): string {
+    return new Date(iso).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+/**
+ * Reusable "field" row with a fixed-width label on the left and the
+ * value on the right. Keeps the Ship-to card and the packing slip
+ * aligned the same way — admins scanning a stack of orders shouldn't
+ * have to guess which value is which.
+ */
+function Field({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex gap-2 text-sm">
+            <span className="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {label}
+            </span>
+            <span className="font-medium">{value}</span>
+        </div>
+    );
+}
+
+/**
+ * Compact per-order timeline. Lists every status change the order went
+ * through with its timestamp. Simpler than the stepper on the customer
+ * page — the admin mostly cares about "when did I ship this?".
+ */
+function AdminTimeline({ history }: { history: OrderStatusChange[] }) {
+    if (history.length === 0) {
+        return (
+            <p className="text-xs text-muted-foreground">
+                No status history recorded.
+            </p>
+        );
+    }
+    return (
+        <ol className="space-y-1 text-xs">
+            {history.map((h, idx) => (
+                <li
+                    key={`${h.status}-${h.changedAt}-${idx}`}
+                    className="flex items-center justify-between gap-3"
+                >
+                    <span
+                        className={`inline-block rounded-full px-2 py-0.5 font-medium ${STATUS_COLORS[h.status]}`}
+                    >
+                        {STATUS_LABELS[h.status]}
+                    </span>
+                    <span className="text-muted-foreground">
+                        {formatStep(h.changedAt)}
+                    </span>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+/**
+ * Black-and-white packing slip rendered into the hidden .print-only
+ * container. Styled to be legible on a B&W printer — no coloured
+ * badges, no shadows. Includes everything a warehouse person needs:
+ * order number, ship-to, pick list with sizes and quantities, and a
+ * signature line.
+ */
+function PackingSlip({ order }: { order: OrderResponse }) {
+    return (
+        <div className="text-black">
+            <div className="mb-6 flex items-start justify-between border-b-2 border-black pb-3">
+                <div>
+                    <h1 className="text-2xl font-bold">Packing Slip</h1>
+                    <p className="text-sm">
+                        Order <strong>#{order.id}</strong> &middot;{" "}
+                        {new Date(order.createdAt).toLocaleString()}
+                    </p>
+                </div>
+                <div className="text-right text-sm">
+                    <p>Status: {order.status}</p>
+                </div>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-6">
+                <div>
+                    <h2 className="mb-2 text-xs font-bold uppercase tracking-wide">
+                        Ship to
+                    </h2>
+                    <div className="space-y-0.5 text-sm leading-relaxed">
+                        <p className="text-base font-bold">
+                            {order.customerName}
+                        </p>
+                        <p>Phone: {order.phone}</p>
+                        <p>{order.addressLine}</p>
+                        <p>
+                            {order.city}, {order.zip}
+                        </p>
+                    </div>
+                </div>
+                <div className="text-right text-sm">
+                    <h2 className="mb-2 text-xs font-bold uppercase tracking-wide">
+                        From
+                    </h2>
+                    <p>Your Shop</p>
+                    <p>Warehouse</p>
+                </div>
+            </div>
+
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide">
+                Items
+            </h2>
+            <table className="mb-6 w-full border-collapse text-sm">
+                <thead>
+                    <tr className="border-b-2 border-black text-left">
+                        <th className="py-2 pr-2">Item</th>
+                        <th className="py-2 px-2">Size</th>
+                        <th className="py-2 px-2 text-center">Qty</th>
+                        <th className="py-2 pl-2 text-right">Line total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {order.items.map((item, idx) => (
+                        <tr
+                            key={`${item.productId}|${item.size ?? "-"}|${idx}`}
+                            className="border-b border-black/50"
+                        >
+                            <td className="py-2 pr-2">{item.title}</td>
+                            <td className="py-2 px-2 font-mono">
+                                {item.size ?? "—"}
+                            </td>
+                            <td className="py-2 px-2 text-center font-bold">
+                                {item.qty}
+                            </td>
+                            <td className="py-2 pl-2 text-right">
+                                ${item.lineTotal.toFixed(2)}
+                            </td>
+                        </tr>
+                    ))}
+                    <tr className="border-b-2 border-black font-bold">
+                        <td colSpan={3} className="py-2 pr-2 text-right">
+                            Total
+                        </td>
+                        <td className="py-2 pl-2 text-right">
+                            ${order.total.toFixed(2)}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div className="mt-12 grid grid-cols-2 gap-12 text-sm">
+                <div>
+                    <p className="border-t border-black pt-1">
+                        Picked by (signature / date)
+                    </p>
+                </div>
+                <div>
+                    <p className="border-t border-black pt-1">
+                        Received by (signature / date)
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState<OrderResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [copiedId, setCopiedId] = useState<number | null>(null);
+    // Which order to render into the .print-only slot. Set just before
+    // window.print() fires, cleared after.
+    const [printingId, setPrintingId] = useState<number | null>(null);
+
+    const printingOrder =
+        printingId !== null
+            ? orders.find((o) => o.id === printingId) ?? null
+            : null;
 
     async function loadOrders() {
         setLoading(true);
@@ -59,13 +243,70 @@ export default function AdminOrdersPage() {
         }
     }
 
+    /**
+     * Copies a pre-formatted "courier-ready" block to the clipboard —
+     * each field labelled so the admin can paste it into any shipping
+     * form without having to reorder the lines.
+     */
+    async function handleCopyAddress(order: OrderResponse) {
+        const block = [
+            `Name: ${order.customerName}`,
+            `Phone: ${order.phone}`,
+            `Address: ${order.addressLine}`,
+            `City: ${order.city}`,
+            `Postal code: ${order.zip}`,
+        ].join("\n");
+
+        try {
+            await navigator.clipboard.writeText(block);
+            setCopiedId(order.id);
+            setTimeout(() => {
+                setCopiedId((cur) => (cur === order.id ? null : cur));
+            }, 1500);
+        } catch {
+            setError("Could not copy to clipboard.");
+        }
+    }
+
+    /**
+     * Sets the print target, waits one paint so React applies the
+     * update, then opens the browser's print dialog. Clearing the id
+     * runs inside an afterprint listener so a cancelled dialog also
+     * resets state.
+     */
+    function handlePrint(orderId: number) {
+        setPrintingId(orderId);
+
+        const onAfterPrint = () => {
+            setPrintingId(null);
+            window.removeEventListener("afterprint", onAfterPrint);
+        };
+        window.addEventListener("afterprint", onAfterPrint);
+
+        // Two rAFs: one so React commits the state change, one so the
+        // browser lays out the now-visible print slip before snapshotting.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                window.print();
+            });
+        });
+    }
+
     return (
         <AdminGuard>
+            {/* Hidden on screen — only .print-only children are painted
+                when the print dialog opens. Populated with the currently
+                selected order right before window.print() fires. */}
+            <div className="print-only">
+                {printingOrder && <PackingSlip order={printingOrder} />}
+            </div>
+
             <div className="space-y-6">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold">Admin Orders</h1>
                     <p className="text-sm text-muted-foreground">
-                        View and manage customer orders.
+                        Manage customer orders, copy shipping addresses, and
+                        print packing slips for dispatch.
                     </p>
                 </div>
 
@@ -152,42 +393,153 @@ export default function AdminOrdersPage() {
                                     </div>
 
                                     {expandedId === order.id && (
-                                        <div className="mt-3 rounded-md border bg-muted/50 p-3">
-                                            <p className="mb-2 text-sm font-medium">
-                                                Order Items
-                                            </p>
-                                            <div className="space-y-1">
-                                                {order.items.map((item, idx) => (
-                                                    // Compound key: same product in
-                                                    // two sizes would collide on
-                                                    // productId alone.
-                                                    <div
-                                                        key={`${item.productId}|${item.size ?? "-"}|${idx}`}
-                                                        className="flex justify-between text-sm"
+                                        <div className="mt-3 grid gap-3 rounded-md border bg-muted/30 p-4 md:grid-cols-3">
+                                            {/* Ship-to card with labelled
+                                                fields so the admin doesn't
+                                                have to guess which line is
+                                                the name vs. the phone. */}
+                                            <div className="rounded-md border bg-background p-4 md:col-span-1">
+                                                <div className="mb-3 flex items-center justify-between">
+                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Ship to
+                                                    </p>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="h-7 px-2 text-xs"
+                                                        onClick={() =>
+                                                            void handleCopyAddress(
+                                                                order
+                                                            )
+                                                        }
                                                     >
-                                                        <span>
-                                                            {item.title}
-                                                            {item.size && (
-                                                                <span className="text-muted-foreground">
-                                                                    {" "}
-                                                                    · size {item.size}
-                                                                </span>
-                                                            )}{" "}
-                                                            x {item.qty}
-                                                        </span>
-                                                        <span>
-                                                            $
-                                                            {item.lineTotal.toFixed(
-                                                                2
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                                        {copiedId === order.id
+                                                            ? "✓ Copied"
+                                                            : "Copy"}
+                                                    </Button>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Field
+                                                        label="Name"
+                                                        value={order.customerName}
+                                                    />
+                                                    <Field
+                                                        label="Phone"
+                                                        value={order.phone}
+                                                    />
+                                                    <Field
+                                                        label="Address"
+                                                        value={order.addressLine}
+                                                    />
+                                                    <Field
+                                                        label="City"
+                                                        value={order.city}
+                                                    />
+                                                    <Field
+                                                        label="Postal"
+                                                        value={order.zip}
+                                                    />
+                                                </div>
+                                                <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+                                                    Order #{order.id} &middot;{" "}
+                                                    {new Date(
+                                                        order.createdAt
+                                                    ).toLocaleString()}
+                                                </div>
                                             </div>
-                                            <p className="mt-2 text-sm text-muted-foreground">
-                                                {order.addressLine},{" "}
-                                                {order.city} {order.zip}
-                                            </p>
+
+                                            {/* Pick list — size and qty are
+                                                what the warehouse person
+                                                cares about, so they get
+                                                their own columns. */}
+                                            <div className="rounded-md border bg-background p-3 md:col-span-2">
+                                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Pick list
+                                                </p>
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="text-left text-xs text-muted-foreground">
+                                                            <th className="py-1 pr-2 font-medium">
+                                                                Item
+                                                            </th>
+                                                            <th className="py-1 px-2 font-medium">
+                                                                Size
+                                                            </th>
+                                                            <th className="py-1 px-2 text-center font-medium">
+                                                                Qty
+                                                            </th>
+                                                            <th className="py-1 pl-2 text-right font-medium">
+                                                                Line
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {order.items.map(
+                                                            (item, idx) => (
+                                                                <tr
+                                                                    key={`${item.productId}|${item.size ?? "-"}|${idx}`}
+                                                                    className="border-t"
+                                                                >
+                                                                    <td className="py-1.5 pr-2">
+                                                                        {item.title}
+                                                                    </td>
+                                                                    <td className="py-1.5 px-2 font-mono">
+                                                                        {item.size ??
+                                                                            "—"}
+                                                                    </td>
+                                                                    <td className="py-1.5 px-2 text-center font-semibold">
+                                                                        {item.qty}
+                                                                    </td>
+                                                                    <td className="py-1.5 pl-2 text-right">
+                                                                        $
+                                                                        {item.lineTotal.toFixed(
+                                                                            2
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        )}
+                                                        <tr className="border-t font-semibold">
+                                                            <td
+                                                                colSpan={3}
+                                                                className="py-1.5 pr-2 text-right"
+                                                            >
+                                                                Total
+                                                            </td>
+                                                            <td className="py-1.5 pl-2 text-right">
+                                                                $
+                                                                {order.total.toFixed(
+                                                                    2
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Timeline + actions row. */}
+                                            <div className="rounded-md border bg-background p-3 md:col-span-3">
+                                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Status timeline
+                                                </p>
+                                                <AdminTimeline
+                                                    history={
+                                                        order.statusHistory ??
+                                                        []
+                                                    }
+                                                />
+                                                <div className="mt-3 flex gap-2 border-t pt-3">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            handlePrint(order.id)
+                                                        }
+                                                    >
+                                                        🖨️ Print packing slip
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
