@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { resolveImageUrl } from "@/lib/http";
-import {getOrder, OrderStatus} from "@/lib/api";
+import {getOrder, OrderStatus, OrderStatusChange} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
 function statusStyles(status: string) {
@@ -40,8 +40,40 @@ function flowIndex(status: OrderStatus) {
     return ORDER_FLOW.indexOf(status);
 }
 
-function StatusTimeline({ status }: { status: OrderStatus }) {
+/**
+ * Compact timestamp for the timeline — single line, user's locale.
+ * e.g. "Apr 24, 10:42". Year omitted on purpose to keep the step label
+ * short; the full created-at is already shown in the order header.
+ */
+function formatStep(iso: string): string {
+    return new Date(iso).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function StatusTimeline({
+    status,
+    history,
+}: {
+    status: OrderStatus;
+    history: OrderStatusChange[];
+}) {
+    // Build a quick lookup: status -> the earliest changedAt we have for
+    // it. "Earliest" in case an admin bounces between statuses — we want
+    // the first time the order *reached* each step.
+    const firstAt = new Map<OrderStatus, string>();
+    for (const h of history) {
+        if (!firstAt.has(h.status)) firstAt.set(h.status, h.changedAt);
+    }
+
+    // The cancellation timestamp lives in history, not on the order row
+    // itself — pull it out here so the red banner can show *when* it was
+    // cancelled, not just that it was.
     if (status === "CANCELLED") {
+        const cancelledAt = firstAt.get("CANCELLED");
         return (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                 <div className="text-sm font-semibold text-red-700">
@@ -49,6 +81,9 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
                 </div>
                 <div className="mt-1 text-xs text-red-600">
                     This order will not be processed further.
+                    {cancelledAt && (
+                        <> · Cancelled on {formatStep(cancelledAt)}</>
+                    )}
                 </div>
             </div>
         );
@@ -78,6 +113,10 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
                     {ORDER_FLOW.map((step, idx) => {
                         const done = idx < current;
                         const active = idx === current;
+                        // Only steps that have actually happened get a
+                        // timestamp. Future steps stay blank so it's
+                        // obvious they're pending.
+                        const reachedAt = firstAt.get(step);
 
                         return (
                             <li
@@ -116,6 +155,13 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
                                         .join(" ")}
                                 >
                                     {STATUS_META[step].label}
+                                </div>
+
+                                {/* Timestamp — only for steps that have
+                                    actually been reached. Fixed min-height
+                                    so future-step columns still align. */}
+                                <div className="mt-1 min-h-[1rem] text-[10px] text-muted-foreground">
+                                    {reachedAt ? formatStep(reachedAt) : ""}
                                 </div>
                             </li>
                         );
@@ -167,7 +213,10 @@ export default async function OrderPage({ params }: Props) {
                 </div>
             </div>
 
-            <StatusTimeline status={order.status} />
+            <StatusTimeline
+                status={order.status}
+                history={order.statusHistory ?? []}
+            />
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="rounded-xl border p-4 lg:col-span-1">

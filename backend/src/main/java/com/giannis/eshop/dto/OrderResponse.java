@@ -16,7 +16,13 @@ public record OrderResponse(
         String zip,
         BigDecimal total,
         OrderStatus status,
-        List<Item> items
+        List<Item> items,
+        /**
+         * Timeline of status transitions, oldest first. Always contains at
+         * least one entry (the "NEW" row written when the order is placed).
+         * The frontend uses this to stamp each step of the progress bar.
+         */
+        List<StatusChange> statusHistory
 ) {
     public record Item(
             Long productId,
@@ -28,5 +34,10 @@ public record OrderResponse(
             String size,
             Integer qty,
             BigDecimal lineTotal
+    ) {}
+
+    public record StatusChange(
+            OrderStatus status,
+            Instant changedAt
     ) {}
 }

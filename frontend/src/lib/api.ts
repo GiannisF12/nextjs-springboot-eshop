@@ -207,6 +207,13 @@ export type OrderStatus =
     | "DELIVERED"
     | "CANCELLED";
 
+/** One entry in the order's status-change audit log, oldest first. */
+export type OrderStatusChange = {
+    status: OrderStatus;
+    /** ISO timestamp (serialized from Java Instant). */
+    changedAt: string;
+};
+
 export type OrderResponse = {
     id: number;
     createdAt: string;
@@ -218,6 +225,7 @@ export type OrderResponse = {
     total: number;
     status: OrderStatus;
     items: OrderItem[];
+    statusHistory: OrderStatusChange[];
 };
 
 export async function createOrder(payload: CreateOrderRequest): Promise<OrderResponse> {
