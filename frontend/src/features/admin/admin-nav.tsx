@@ -10,6 +10,7 @@ const links = [
     { href: "/admin/categories", label: "Categories" },
     { href: "/admin/orders", label: "Orders" },
     { href: "/admin/users", label: "Users" },
+    { href: "/admin/discounts", label: "Discounts" },
 ];
 
 export function AdminNav() {

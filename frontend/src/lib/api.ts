@@ -187,6 +187,8 @@ export type CreateOrderRequest = {
     city: string;
     zip: string;
     items: CreateOrderItem[];
+    /** Optional promo code — server re-validates and re-calculates. */
+    discountCode?: string;
 };
 
 export type OrderItem = {
@@ -223,6 +225,10 @@ export type OrderResponse = {
     city: string;
     zip: string;
     total: number;
+    /** Discount code snapshot, if any was applied at checkout. */
+    discountCode: string | null;
+    /** Percent-off snapshot, if any was applied at checkout. */
+    discountPercent: number | null;
     status: OrderStatus;
     items: OrderItem[];
     statusHistory: OrderStatusChange[];
@@ -479,4 +485,70 @@ export async function updateOrderStatus(
     return apiFetch<OrderResponse>(`/api/orders/${id}/status?status=${status}`, {
         method: "PATCH",
     });
+}
+
+// --- Discount codes ---
+
+export type DiscountCode = {
+    id: number;
+    code: string;
+    percentOff: number;
+    active: boolean;
+    createdAt: string;
+};
+
+export type DiscountCodePayload = {
+    code: string;
+    percentOff: number;
+    active: boolean;
+};
+
+/** Admin only — lists every code, newest first. */
+export async function getAdminDiscountCodes(): Promise<DiscountCode[]> {
+    return apiFetch<DiscountCode[]>("/api/admin/discounts", {
+        cache: "no-store",
+    });
+}
+
+export async function createDiscountCode(
+    payload: DiscountCodePayload
+): Promise<DiscountCode> {
+    return apiFetch<DiscountCode>("/api/admin/discounts", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function updateDiscountCode(
+    id: number,
+    payload: DiscountCodePayload
+): Promise<DiscountCode> {
+    return apiFetch<DiscountCode>(`/api/admin/discounts/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function deleteDiscountCode(id: number): Promise<void> {
+    await apiFetch(`/api/admin/discounts/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Public — checkout calls this when the customer clicks "Apply".
+ * Resolves to null when the code is unknown or inactive, so the UI
+ * can show "Invalid code" without having to introspect the error.
+ */
+export async function validateDiscountCode(
+    code: string
+): Promise<DiscountCode | null> {
+    try {
+        return await apiFetch<DiscountCode>("/api/discounts/validate", {
+            method: "POST",
+            body: JSON.stringify({ code }),
+        });
+    } catch (e: unknown) {
+        // apiFetch throws "<status> <body>" — treat 404 as "not valid".
+        if (e instanceof Error && e.message.startsWith("404")) return null;
+        throw e;
+    }
 }

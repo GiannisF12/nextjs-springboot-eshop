@@ -12,7 +12,13 @@ public record CreateOrderRequest(
         @NotBlank String addressLine,
         @NotBlank String city,
         @NotBlank String zip,
-        @NotEmpty @Valid List<Item> items
+        @NotEmpty @Valid List<Item> items,
+        /**
+         * Optional discount code entered on the checkout page. The server
+         * re-validates and re-calculates the discount — the client is
+         * never trusted for the percent-off.
+         */
+        String discountCode
 ) {
     public record Item(
             @NotNull Long productId,

@@ -210,6 +210,14 @@ export default async function OrderPage({ params }: Props) {
                 <div className="text-right">
                     <div className="text-sm text-muted-foreground">Total</div>
                     <div className="text-xl font-semibold">€{Number(order.total).toFixed(2)}</div>
+                    {order.discountCode && (
+                        <div className="mt-1 text-xs text-green-700">
+                            −{order.discountPercent}% with{" "}
+                            <span className="font-mono font-semibold">
+                                {order.discountCode}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -238,39 +246,95 @@ export default async function OrderPage({ params }: Props) {
                 <div className="space-y-3 lg:col-span-2">
                     <h2 className="font-semibold">Items</h2>
 
-                    {order.items.map((it, idx) => (
-                        // Key has to include size + index because one order
-                        // can have the same product in two sizes (e.g. shirt
-                        // in M and L) which would collide on productId alone.
-                        <div
-                            key={`${it.productId}|${it.size ?? "-"}|${idx}`}
-                            className="flex items-center gap-4 rounded-xl border p-3"
-                        >
-                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                                <Image
-                                    src={resolveImageUrl(it.image)}
-                                    alt={it.title}
-                                    fill
-                                    className="object-cover"
-                                    sizes="64px"
-                                />
-                            </div>
+                    {order.items.map((it, idx) => {
+                        // Apply the order-level discount to each line so
+                        // the customer sees the actual amount they paid
+                        // per unit, not just the sticker price.
+                        const pct = order.discountPercent ?? 0;
+                        const eachBefore = Number(it.price);
+                        const eachAfter =
+                            pct > 0
+                                ? Math.round(eachBefore * (100 - pct)) / 100
+                                : eachBefore;
+                        const lineBefore = Number(it.lineTotal);
+                        const lineAfter =
+                            pct > 0
+                                ? Math.round(lineBefore * (100 - pct)) / 100
+                                : lineBefore;
 
-                            <div className="min-w-0 flex-1">
-                                <div className="font-medium truncate">{it.title}</div>
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                    <Badge variant="secondary">{it.category}</Badge>
-                                    {it.size && (
-                                        <Badge variant="outline">Size {it.size}</Badge>
+                        return (
+                            // Key has to include size + index because one
+                            // order can have the same product in two sizes
+                            // (e.g. shirt in M and L) which would collide on
+                            // productId alone.
+                            <div
+                                key={`${it.productId}|${it.size ?? "-"}|${idx}`}
+                                className="flex items-center gap-4 rounded-xl border p-3"
+                            >
+                                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                                    <Image
+                                        src={resolveImageUrl(it.image)}
+                                        alt={it.title}
+                                        fill
+                                        className="object-cover"
+                                        sizes="64px"
+                                    />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-medium truncate">
+                                        {it.title}
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                        <Badge variant="secondary">
+                                            {it.category}
+                                        </Badge>
+                                        {it.size && (
+                                            <Badge variant="outline">
+                                                Size {it.size}
+                                            </Badge>
+                                        )}
+                                        <span>Qty: {it.qty}</span>
+                                        {pct > 0 ? (
+                                            <span>
+                                                <span className="text-muted-foreground line-through">
+                                                    €{eachBefore.toFixed(2)}
+                                                </span>{" "}
+                                                <span className="font-medium text-green-700">
+                                                    €{eachAfter.toFixed(2)} each
+                                                </span>
+                                            </span>
+                                        ) : (
+                                            <span>
+                                                €{eachBefore.toFixed(2)} each
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right column shows the line subtotal. When a
+                                    discount is active we show the sticker
+                                    line total struck through with the
+                                    discounted amount below it. */}
+                                <div className="text-right">
+                                    {pct > 0 ? (
+                                        <>
+                                            <div className="text-xs text-muted-foreground line-through">
+                                                €{lineBefore.toFixed(2)}
+                                            </div>
+                                            <div className="font-semibold text-green-700">
+                                                €{lineAfter.toFixed(2)}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="font-semibold">
+                                            €{lineBefore.toFixed(2)}
+                                        </div>
                                     )}
-                                    <span>Qty: {it.qty}</span>
-                                    <span>€{Number(it.price).toFixed(2)} each</span>
                                 </div>
                             </div>
-
-                            <div className="font-semibold">€{Number(it.lineTotal).toFixed(2)}</div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     <div className="flex gap-2 pt-2">
                         <Button asChild variant="secondary">

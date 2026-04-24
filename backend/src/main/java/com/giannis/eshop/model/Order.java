@@ -44,6 +44,18 @@ public class Order {
     @Column(nullable = false)
     private BigDecimal total;
 
+    /**
+     * Snapshot of the discount code applied at checkout. Null if none.
+     * Stored so order history reads correctly even if the admin later
+     * deletes the code from discount_codes.
+     */
+    @Column(name = "discount_code", length = 50)
+    private String discountCode;
+
+    /** Snapshot of the percent-off at the time of checkout. Null if no code. */
+    @Column(name = "discount_percent")
+    private Integer discountPercent;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

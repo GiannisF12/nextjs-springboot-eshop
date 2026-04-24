@@ -109,6 +109,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
 
+                        // Public discount-code check used on the checkout
+                        // page. Returns 404 for unknown/inactive codes —
+                        // never reveals whether a specific code exists
+                        // in an inactive state.
+                        .requestMatchers(HttpMethod.POST, "/api/discounts/validate").permitAll()
+
                         // dedicated admin area (Option B)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 

@@ -15,6 +15,10 @@ public record OrderResponse(
         String city,
         String zip,
         BigDecimal total,
+        /** Discount code applied at checkout, or null. */
+        String discountCode,
+        /** Percent-off snapshot at checkout, or null. */
+        Integer discountPercent,
         OrderStatus status,
         List<Item> items,
         /**

@@ -9,6 +9,8 @@ import com.giannis.eshop.model.OrderStatus;
 import com.giannis.eshop.model.OrderStatusHistory;
 import com.giannis.eshop.model.Product;
 import com.giannis.eshop.model.ProductVariant;
+import com.giannis.eshop.model.DiscountCode;
+import com.giannis.eshop.repository.DiscountCodeRepository;
 import com.giannis.eshop.repository.OrderRepository;
 import com.giannis.eshop.repository.OrderStatusHistoryRepository;
 import com.giannis.eshop.repository.ProductRepository;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 
@@ -29,6 +32,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final OrderStatusHistoryRepository statusHistoryRepository;
+    private final DiscountCodeRepository discountCodeRepository;
 
     /**
      * Places an order. All-or-nothing:
@@ -105,6 +109,27 @@ public class OrderService {
             order.getItems().add(item);
         }
 
+        // If the checkout form included a discount code, re-validate it
+        // server-side and apply it to the total. Client-supplied percents
+        // are never trusted — we always look up the current value.
+        if (req.discountCode() != null && !req.discountCode().isBlank()) {
+            DiscountCode code = discountCodeRepository
+                    .findByCode(req.discountCode().trim().toUpperCase())
+                    .filter(DiscountCode::getActive)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid or inactive discount code"));
+
+            // total * (100 - percent) / 100, rounded to 2 decimals. Using
+            // HALF_UP matches how prices are rendered everywhere else.
+            BigDecimal factor = BigDecimal.valueOf(100 - code.getPercentOff())
+                    .divide(BigDecimal.valueOf(100));
+            total = total.multiply(factor).setScale(2, RoundingMode.HALF_UP);
+
+            order.setDiscountCode(code.getCode());
+            order.setDiscountPercent(code.getPercentOff());
+        }
+
         order.setTotal(total);
         Order saved = orderRepository.save(order);
 
@@ -166,6 +191,8 @@ public class OrderService {
                 o.getCity(),
                 o.getZip(),
                 o.getTotal(),
+                o.getDiscountCode(),
+                o.getDiscountPercent(),
                 o.getStatus(),
                 items,
                 history

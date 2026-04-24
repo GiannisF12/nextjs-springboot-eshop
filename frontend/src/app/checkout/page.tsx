@@ -6,8 +6,14 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CartSyncNotice } from "@/components/cart-sync-notice";
 import { useCart } from "@/lib/cart-store";
-import { createOrder } from "@/lib/api";
+import { useCartSync } from "@/lib/use-cart-sync";
+import {
+    type DiscountCode,
+    createOrder,
+    validateDiscountCode,
+} from "@/lib/api";
 
 type FormState = {
     customerName: string;
@@ -64,6 +70,11 @@ export default function CheckoutPage() {
     const total = useCart((s) => s.totalPrice());
     const clear = useCart((s) => s.clear);
 
+    // Reconciles cart lines with the server on mount. Also runs on
+    // /cart — any change there is already visible by the time the
+    // customer clicks Checkout, but we re-check here as a safety net.
+    const { syncing, issues: syncIssues } = useCartSync();
+
     const [form, setForm] = useState<FormState>({
         customerName: "",
         phone: "",
@@ -74,6 +85,51 @@ export default function CheckoutPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Discount-code state. `applied` holds the validated code from the
+    // server once the customer clicks Apply; until then we only have
+    // the raw input string. Null after Apply means "tried, invalid".
+    const [codeInput, setCodeInput] = useState("");
+    const [applied, setApplied] = useState<DiscountCode | null>(null);
+    const [codeStatus, setCodeStatus] = useState<
+        "idle" | "checking" | "invalid"
+    >("idle");
+
+    /**
+     * Derived totals — if a code is applied we take the percent off the
+     * raw cart total, rounded to 2 decimals (same rounding the backend
+     * uses). The backend is the source of truth at order creation, so
+     * the number shown here is just a preview.
+     */
+    const discountAmount = applied
+        ? Math.round(total * applied.percentOff) / 100
+        : 0;
+    const payableTotal = Math.max(0, total - discountAmount);
+
+    async function onApplyCode() {
+        const code = codeInput.trim();
+        if (!code) return;
+        setCodeStatus("checking");
+        try {
+            const result = await validateDiscountCode(code);
+            if (result) {
+                setApplied(result);
+                setCodeStatus("idle");
+            } else {
+                setApplied(null);
+                setCodeStatus("invalid");
+            }
+        } catch {
+            setApplied(null);
+            setCodeStatus("invalid");
+        }
+    }
+
+    function onRemoveCode() {
+        setApplied(null);
+        setCodeInput("");
+        setCodeStatus("idle");
+    }
 
     const canSubmit = useMemo(() => {
         if (items.length === 0) return false;
@@ -118,6 +174,9 @@ export default function CheckoutPage() {
                     price: it.price, // JSON number -> backend BigDecimal OK
                     qty: it.qty,
                 })),
+                // Only include when the customer has successfully
+                // applied a code — the backend re-validates anyway.
+                ...(applied ? { discountCode: applied.code } : {}),
             };
 
             const created = await createOrder(payload);
@@ -138,7 +197,16 @@ export default function CheckoutPage() {
             <div className="flex items-end justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Checkout</h1>
-                    <p className="text-sm text-muted-foreground">Total €{total.toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">
+                        Total €{payableTotal.toFixed(2)}
+                        {applied && (
+                            <span className="text-green-700">
+                                {" "}
+                                (saved €{discountAmount.toFixed(2)} with{" "}
+                                <span className="font-mono">{applied.code}</span>)
+                            </span>
+                        )}
+                    </p>
                 </div>
 
                 {/* Optional: disable back button while submitting */}
@@ -148,6 +216,8 @@ export default function CheckoutPage() {
                     </Link>
                 </Button>
             </div>
+
+            <CartSyncNotice syncing={syncing} issues={syncIssues} />
 
             <form
                 onSubmit={onSubmit}
@@ -195,6 +265,97 @@ export default function CheckoutPage() {
                             onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
                             placeholder="ZIP"
                         />
+                    </div>
+
+                    {/* Discount code block. Kept inside the shipping card
+                        so it sits right above the "Place order" button —
+                        that's where customers look for it. */}
+                    <div className="rounded-md border bg-muted/30 p-3">
+                        <p className="mb-2 text-sm font-medium">
+                            Discount code
+                        </p>
+                        {applied ? (
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm">
+                                    <span className="rounded bg-green-100 px-2 py-0.5 font-mono font-semibold text-green-800">
+                                        {applied.code}
+                                    </span>{" "}
+                                    <span className="text-muted-foreground">
+                                        applied &middot; −{applied.percentOff}% (−€
+                                        {discountAmount.toFixed(2)})
+                                    </span>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onRemoveCode}
+                                    disabled={submitting}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-start gap-2">
+                                <Input
+                                    disabled={
+                                        submitting ||
+                                        codeStatus === "checking"
+                                    }
+                                    value={codeInput}
+                                    onChange={(e) => {
+                                        setCodeInput(e.target.value);
+                                        if (codeStatus === "invalid") {
+                                            setCodeStatus("idle");
+                                        }
+                                    }}
+                                    placeholder="e.g. SAVE10"
+                                    className="font-mono uppercase"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => void onApplyCode()}
+                                    disabled={
+                                        submitting ||
+                                        codeStatus === "checking" ||
+                                        !codeInput.trim()
+                                    }
+                                >
+                                    {codeStatus === "checking"
+                                        ? "Checking..."
+                                        : "Apply"}
+                                </Button>
+                            </div>
+                        )}
+                        {codeStatus === "invalid" && (
+                            <p className="mt-2 text-xs text-red-600">
+                                That code isn&apos;t valid or has been disabled.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Totals summary — shows subtotal + discount line +
+                        final payable amount so there are no surprises
+                        when the order is submitted. */}
+                    <div className="rounded-md border p-3 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                                Subtotal
+                            </span>
+                            <span>€{total.toFixed(2)}</span>
+                        </div>
+                        {applied && (
+                            <div className="mt-1 flex justify-between text-green-700">
+                                <span>
+                                    Discount ({applied.code} −{applied.percentOff}%)
+                                </span>
+                                <span>−€{discountAmount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
+                            <span>Total</span>
+                            <span>€{payableTotal.toFixed(2)}</span>
+                        </div>
                     </div>
 
                     {error &&

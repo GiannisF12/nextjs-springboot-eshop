@@ -499,6 +499,31 @@ export default function AdminOrdersPage() {
                                                                 </tr>
                                                             )
                                                         )}
+                                                        {order.discountCode && (
+                                                            <tr className="border-t text-green-700">
+                                                                <td
+                                                                    colSpan={3}
+                                                                    className="py-1.5 pr-2 text-right text-xs"
+                                                                >
+                                                                    Discount
+                                                                    applied:{" "}
+                                                                    <span className="font-mono font-semibold">
+                                                                        {
+                                                                            order.discountCode
+                                                                        }
+                                                                    </span>{" "}
+                                                                    (−
+                                                                    {
+                                                                        order.discountPercent
+                                                                    }
+                                                                    %)
+                                                                </td>
+                                                                <td className="py-1.5 pl-2 text-right text-xs">
+                                                                    (already in
+                                                                    total)
+                                                                </td>
+                                                            </tr>
+                                                        )}
                                                         <tr className="border-t font-semibold">
                                                             <td
                                                                 colSpan={3}
