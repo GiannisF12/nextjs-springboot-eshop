@@ -27,12 +27,61 @@ export type CartItem = {
 
 type AddPayload = Omit<CartItem, "qty"> & { qty?: number };
 
+/**
+ * A fresh product fetched from the server — the shape we need to
+ * reconcile the cart with the latest prices / stock before checkout.
+ * Kept minimal so any product-like object from /api/products works.
+ */
+export type FreshProduct = {
+    id: number;
+    price: number;
+    variants: { size: string; stock: number }[];
+};
+
+/**
+ * What changed when the cart was reconciled with the server. The
+ * checkout page surfaces these to the customer so they can't get
+ * surprised by a price bump between browsing and paying.
+ */
+export type CartSyncIssue =
+    | {
+          kind: "price_changed";
+          id: number;
+          size: string;
+          title: string;
+          oldPrice: number;
+          newPrice: number;
+      }
+    | {
+          kind: "stock_reduced";
+          id: number;
+          size: string;
+          title: string;
+          oldQty: number;
+          newQty: number;
+      }
+    | { kind: "removed"; id: number; size: string; title: string };
+
 type CartState = {
     items: CartItem[];
     add: (payload: AddPayload) => void;
     remove: (id: number, size: string) => void;
     setQty: (id: number, size: string, qty: number) => void;
     clear: () => void;
+
+    /**
+     * Reconciles cart lines with what's currently in the DB:
+     *  - updates price and maxStock for each line
+     *  - clamps qty down if stock is now lower
+     *  - drops the line entirely if the product/size no longer exists
+     *
+     * Returns the list of changes so the UI can warn the customer.
+     * `missingIds` lists product IDs that came back as null (deleted).
+     */
+    syncWithServer: (
+        fresh: FreshProduct[],
+        missingIds: number[]
+    ) => CartSyncIssue[];
 
     totalItems: () => number;
     totalPrice: () => number;
@@ -96,6 +145,87 @@ export const useCart = create<CartState>()(
                 })),
 
             clear: () => set({ items: [] }),
+
+            syncWithServer: (fresh, missingIds) => {
+                const issues: CartSyncIssue[] = [];
+                const byId = new Map(fresh.map((p) => [p.id, p]));
+
+                set((state) => {
+                    const next: CartItem[] = [];
+
+                    for (const item of state.items) {
+                        // Product was deleted on the server.
+                        if (missingIds.includes(item.id)) {
+                            issues.push({
+                                kind: "removed",
+                                id: item.id,
+                                size: item.size,
+                                title: item.title,
+                            });
+                            continue;
+                        }
+
+                        const server = byId.get(item.id);
+                        if (!server) {
+                            // Shouldn't happen — caller passes either the
+                            // product or flags its id as missing. Treat as
+                            // "keep as-is" to avoid data loss.
+                            next.push(item);
+                            continue;
+                        }
+
+                        // Variant may have been removed too (e.g. admin
+                        // dropped size M from a product).
+                        const variant = server.variants.find(
+                            (v) => v.size === item.size
+                        );
+                        if (!variant) {
+                            issues.push({
+                                kind: "removed",
+                                id: item.id,
+                                size: item.size,
+                                title: item.title,
+                            });
+                            continue;
+                        }
+
+                        let newItem = { ...item };
+
+                        if (server.price !== item.price) {
+                            issues.push({
+                                kind: "price_changed",
+                                id: item.id,
+                                size: item.size,
+                                title: item.title,
+                                oldPrice: item.price,
+                                newPrice: server.price,
+                            });
+                            newItem.price = server.price;
+                        }
+
+                        if (variant.stock < item.qty) {
+                            issues.push({
+                                kind: "stock_reduced",
+                                id: item.id,
+                                size: item.size,
+                                title: item.title,
+                                oldQty: item.qty,
+                                newQty: variant.stock,
+                            });
+                            newItem.qty = variant.stock;
+                        }
+                        newItem.maxStock = variant.stock;
+
+                        // Only push lines that still have a positive qty
+                        // — a stock drop to 0 effectively removes the line.
+                        if (newItem.qty > 0) next.push(newItem);
+                    }
+
+                    return { items: next };
+                });
+
+                return issues;
+            },
 
             totalItems: () => get().items.reduce((sum, x) => sum + x.qty, 0),
             totalPrice: () =>

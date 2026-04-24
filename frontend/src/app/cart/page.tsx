@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { CartSyncNotice } from "@/components/cart-sync-notice";
 import { useCart } from "@/lib/cart-store";
+import { useCartSync } from "@/lib/use-cart-sync";
 import { resolveImageUrl } from "@/lib/http";
 
 export default function CartPage() {
@@ -13,6 +15,10 @@ export default function CartPage() {
     const setQty = useCart((s) => s.setQty);
     const remove = useCart((s) => s.remove);
     const clear = useCart((s) => s.clear);
+
+    // Sync prices / stock with the server the moment the customer
+    // opens their cart, so stale values never flash before the notice.
+    const { syncing, issues: syncIssues } = useCartSync();
 
     if (items.length === 0) {
         return (
@@ -40,6 +46,8 @@ export default function CartPage() {
                     Clear cart
                 </Button>
             </div>
+
+            <CartSyncNotice syncing={syncing} issues={syncIssues} />
 
             <div className="space-y-3">
                 {items.map((it) => (
