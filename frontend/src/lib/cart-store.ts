@@ -189,7 +189,7 @@ export const useCart = create<CartState>()(
                             continue;
                         }
 
-                        let newItem = { ...item };
+                        const newItem = { ...item };
 
                         if (server.price !== item.price) {
                             issues.push({
