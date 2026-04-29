@@ -580,6 +580,11 @@ export async function validateDiscountCode(
 export type StoreSettings = {
     shippingFlatRate: number;
     freeShippingThreshold: number;
+    /**
+     * Stock at or below this number counts as "low stock" — used by the
+     * admin dashboard widget. 0 disables the check.
+     */
+    lowStockThreshold: number;
     /** ISO timestamp — when the row was last saved. */
     updatedAt: string;
 };
@@ -591,11 +596,30 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 
 /** Admin only — wired to the /admin/settings page. */
 export async function updateStoreSettings(
-    payload: Pick<StoreSettings, "shippingFlatRate" | "freeShippingThreshold">
+    payload: Pick<
+        StoreSettings,
+        "shippingFlatRate" | "freeShippingThreshold" | "lowStockThreshold"
+    >
 ): Promise<StoreSettings> {
     return apiFetch<StoreSettings>("/api/admin/settings", {
         method: "PUT",
         body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Admin dashboard widget — count of variants at or below the stored
+ * low-stock threshold. The threshold comes back too so the UI can
+ * label the card without a second round-trip.
+ */
+export type LowStockSummary = {
+    count: number;
+    threshold: number;
+};
+
+export async function getLowStockSummary(): Promise<LowStockSummary> {
+    return apiFetch<LowStockSummary>("/api/admin/stats/low-stock", {
+        cache: "no-store",
     });
 }
 

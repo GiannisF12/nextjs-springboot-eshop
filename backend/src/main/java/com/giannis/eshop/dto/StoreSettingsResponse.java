@@ -10,6 +10,7 @@ import java.time.Instant;
 public record StoreSettingsResponse(
         BigDecimal shippingFlatRate,
         BigDecimal freeShippingThreshold,
+        Integer lowStockThreshold,
         Instant updatedAt
 ) {
 }

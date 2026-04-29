@@ -8,28 +8,36 @@ import { AdminNav } from "@/features/admin/admin-nav";
 import { AnalyticsSection } from "@/features/admin/analytics-section";
 import {
     type AdminStats,
+    type LowStockSummary,
     type OrderResponse,
     getAdminStats,
     getAdminOrders,
+    getLowStockSummary,
 } from "@/lib/api";
 import { STATUS_COLORS } from "@/lib/order-status-colors";
 
 export default function AdminPage() {
     const [stats, setStats] = useState<AdminStats | null>(null);
+    const [lowStock, setLowStock] = useState<LowStockSummary | null>(null);
     const [recentOrders, setRecentOrders] = useState<OrderResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function load() {
             try {
-                const [statsData, ordersData] = await Promise.all([
-                    getAdminStats(),
-                    getAdminOrders(),
-                ]);
+                // Fire all three in parallel; if any single endpoint
+                // fails the others still render. We swallow individual
+                // errors so the dashboard stays partially useful even
+                // if one piece is broken.
+                const [statsData, ordersData, lowStockData] =
+                    await Promise.all([
+                        getAdminStats().catch(() => null),
+                        getAdminOrders().catch(() => [] as OrderResponse[]),
+                        getLowStockSummary().catch(() => null),
+                    ]);
                 setStats(statsData);
                 setRecentOrders(ordersData.slice(0, 5));
-            } catch {
-                // stats will stay null — cards just show "—"
+                setLowStock(lowStockData);
             } finally {
                 setLoading(false);
             }
@@ -49,6 +57,41 @@ export default function AdminPage() {
                 </div>
 
                 <AdminNav />
+
+                {/* Low-stock alert — only renders when there's something
+                    to act on, so the dashboard stays calm when stock is
+                    healthy. Threshold of 0 means the admin disabled the
+                    check, in which case we hide the card entirely. */}
+                {lowStock && lowStock.threshold > 0 && lowStock.count > 0 && (
+                    <Link
+                        href="/admin/products"
+                        className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 transition-colors hover:bg-amber-100"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">⚠️</span>
+                            <div>
+                                <p className="font-semibold text-amber-900">
+                                    {lowStock.count}{" "}
+                                    {lowStock.count === 1
+                                        ? "variant is"
+                                        : "variants are"}{" "}
+                                    running low
+                                </p>
+                                <p className="text-xs text-amber-800/80">
+                                    Stock at or below{" "}
+                                    {lowStock.threshold}{" "}
+                                    {lowStock.threshold === 1
+                                        ? "unit"
+                                        : "units"}
+                                    . Click to review.
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-sm font-medium text-amber-900">
+                            Open products →
+                        </span>
+                    </Link>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard

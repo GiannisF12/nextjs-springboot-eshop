@@ -33,10 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </main>
                 <SiteFooter />
             </div>
-            {/* Global toast outlet — see lib/toast.ts and sonner docs.
+            {/* Global toast outlet — bottom-right so it doesn't cover
+                the header nav (Cart, Orders, etc.) on smaller windows.
                 richColors gives green/red variants for success/error
                 without us styling each call. */}
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="bottom-right" />
         </AuthProvider>
         </body>
         </html>

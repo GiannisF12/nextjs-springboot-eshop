@@ -39,4 +39,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         where p.id = :id
     """)
     Optional<Product> findByIdForOrder(@Param("id") Long id);
+
+    /**
+     * Count of variants whose stock is at or below the given threshold.
+     * Used by the admin dashboard widget. We count variants (not
+     * products) because a single product can have one out-of-stock
+     * size while the rest are healthy — the warehouse cares about the
+     * line item, not the product.
+     */
+    @Query("""
+        select count(v) from ProductVariant v
+        where v.stock <= :threshold
+    """)
+    long countLowStockVariants(@Param("threshold") int threshold);
 }

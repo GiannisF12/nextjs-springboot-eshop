@@ -46,6 +46,14 @@ public class StoreSettings {
     @Column(name = "free_shipping_threshold", nullable = false)
     private BigDecimal freeShippingThreshold;
 
+    /**
+     * Variants whose stock is at or below this number show up in the
+     * "Low stock" dashboard widget and (later) trigger an email to the
+     * admin when an order pushes a variant below it.
+     */
+    @Column(name = "low_stock_threshold", nullable = false)
+    private Integer lowStockThreshold;
+
     /** Bumped on every save — useful for cache busting later. */
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;

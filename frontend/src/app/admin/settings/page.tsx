@@ -21,6 +21,7 @@ import {
 type FormState = {
     shippingFlatRate: string;
     freeShippingThreshold: string;
+    lowStockThreshold: string;
 };
 
 export default function AdminSettingsPage() {
@@ -28,6 +29,7 @@ export default function AdminSettingsPage() {
     const [form, setForm] = useState<FormState>({
         shippingFlatRate: "",
         freeShippingThreshold: "",
+        lowStockThreshold: "",
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -40,6 +42,7 @@ export default function AdminSettingsPage() {
             setForm({
                 shippingFlatRate: s.shippingFlatRate.toFixed(2),
                 freeShippingThreshold: s.freeShippingThreshold.toFixed(2),
+                lowStockThreshold: String(s.lowStockThreshold),
             });
         } catch (e: unknown) {
             toast.error(
@@ -62,6 +65,7 @@ export default function AdminSettingsPage() {
 
         const flat = Number(form.shippingFlatRate);
         const threshold = Number(form.freeShippingThreshold);
+        const lowStock = Number(form.lowStockThreshold);
 
         if (Number.isNaN(flat) || flat < 0) {
             toast.error("Shipping flat rate must be a number ≥ 0");
@@ -71,17 +75,27 @@ export default function AdminSettingsPage() {
             toast.error("Free-shipping threshold must be a number ≥ 0");
             return;
         }
+        if (
+            Number.isNaN(lowStock) ||
+            lowStock < 0 ||
+            !Number.isInteger(lowStock)
+        ) {
+            toast.error("Low-stock threshold must be a whole number ≥ 0");
+            return;
+        }
 
         setSaving(true);
         try {
             const updated = await updateStoreSettings({
                 shippingFlatRate: flat,
                 freeShippingThreshold: threshold,
+                lowStockThreshold: lowStock,
             });
             setCurrent(updated);
             setForm({
                 shippingFlatRate: updated.shippingFlatRate.toFixed(2),
                 freeShippingThreshold: updated.freeShippingThreshold.toFixed(2),
+                lowStockThreshold: String(updated.lowStockThreshold),
             });
             toast.success("Settings saved");
         } catch (e: unknown) {
@@ -175,6 +189,39 @@ export default function AdminSettingsPage() {
                                 </span>
                             </label>
                         </div>
+
+                        <div className="space-y-1 border-t pt-6">
+                            <h2 className="text-lg font-semibold">Inventory</h2>
+                            <p className="text-xs text-muted-foreground">
+                                Drives the &ldquo;Low stock&rdquo; warning on
+                                the dashboard. Set to 0 to switch the warning
+                                off entirely.
+                            </p>
+                        </div>
+
+                        <label className="block max-w-xs space-y-1">
+                            <span className="text-sm font-medium">
+                                Low-stock threshold (units)
+                            </span>
+                            <Input
+                                type="number"
+                                step="1"
+                                min="0"
+                                inputMode="numeric"
+                                value={form.lowStockThreshold}
+                                onChange={(e) =>
+                                    setForm((f) => ({
+                                        ...f,
+                                        lowStockThreshold: e.target.value,
+                                    }))
+                                }
+                                disabled={saving}
+                            />
+                            <span className="block text-xs text-muted-foreground">
+                                Variants with this much stock or fewer
+                                count as &ldquo;low&rdquo;. Typical: 3 – 10.
+                            </span>
+                        </label>
 
                         <div className="flex items-center justify-between border-t pt-4">
                             <div className="text-xs text-muted-foreground">

@@ -10,6 +10,7 @@ import com.giannis.eshop.repository.OrderItemRepository;
 import com.giannis.eshop.repository.OrderRepository;
 import com.giannis.eshop.repository.ProductRepository;
 import com.giannis.eshop.repository.UserRepository;
+import com.giannis.eshop.service.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ public class AdminController {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final StoreSettingsService storeSettingsService;
 
     @GetMapping("/health")
     public String health() {
@@ -125,10 +127,25 @@ public class AdminController {
         return orderRepository.countByStatusGrouped();
     }
 
+    /**
+     * Count of variants whose stock is at or below the admin-configured
+     * threshold (store_settings.low_stock_threshold). Powers the
+     * dashboard widget — the admin clicks the count to jump to a
+     * filtered products list.
+     */
+    @GetMapping("/stats/low-stock")
+    public LowStockResponse lowStockCount() {
+        int threshold = storeSettingsService.getEntity().getLowStockThreshold();
+        long count = productRepository.countLowStockVariants(threshold);
+        return new LowStockResponse(count, threshold);
+    }
+
     record StatsResponse(
             long totalOrders,
             long totalProducts,
             long totalUsers,
             BigDecimal totalRevenue
     ) {}
+
+    record LowStockResponse(long count, int threshold) {}
 }

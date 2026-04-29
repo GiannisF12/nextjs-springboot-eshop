@@ -55,6 +55,7 @@ public class StoreSettingsService {
                 req.shippingFlatRate().setScale(2, RoundingMode.HALF_UP));
         settings.setFreeShippingThreshold(
                 req.freeShippingThreshold().setScale(2, RoundingMode.HALF_UP));
+        settings.setLowStockThreshold(req.lowStockThreshold());
         // updated_at refreshed by @PreUpdate.
         return toResponse(settings);
     }
@@ -79,6 +80,7 @@ public class StoreSettingsService {
         return new StoreSettingsResponse(
                 s.getShippingFlatRate(),
                 s.getFreeShippingThreshold(),
+                s.getLowStockThreshold(),
                 s.getUpdatedAt()
         );
     }
