@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LocalTime } from "@/components/local-time";
+import { DetailRow } from "@/components/detail-row";
 import { resolveImageUrl } from "@/lib/http";
 import {getOrder, OrderStatus, OrderStatusChange} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -249,17 +250,19 @@ export default async function OrderPage({ params }: Props) {
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="rounded-xl border p-4 lg:col-span-1">
                     <h2 className="font-semibold">Customer</h2>
-                    <div className="mt-2 space-y-1 text-sm">
-                        <div>{order.customerName}</div>
-                        <div className="text-muted-foreground">{order.phone}</div>
+                    <div className="mt-2 space-y-1.5">
+                        <DetailRow label="Name" value={order.customerName} />
+                        <DetailRow label="Phone" value={order.phone} />
                     </div>
 
                     <h2 className="mt-4 font-semibold">Shipping</h2>
-                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                        <div>{order.addressLine}</div>
-                        <div>
-                            {order.city}, {order.zip}
-                        </div>
+                    <div className="mt-2 space-y-1.5">
+                        <DetailRow
+                            label="Address"
+                            value={order.addressLine}
+                        />
+                        <DetailRow label="City" value={order.city} />
+                        <DetailRow label="Postal" value={order.zip} />
                     </div>
                 </div>
 

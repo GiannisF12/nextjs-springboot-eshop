@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DetailRow } from "@/components/detail-row";
 import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
 import {
@@ -42,23 +43,6 @@ function formatStep(iso: string): string {
         hour: "2-digit",
         minute: "2-digit",
     });
-}
-
-/**
- * Reusable "field" row with a fixed-width label on the left and the
- * value on the right. Keeps the Ship-to card and the packing slip
- * aligned the same way — admins scanning a stack of orders shouldn't
- * have to guess which value is which.
- */
-function Field({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex gap-2 text-sm">
-            <span className="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {label}
-            </span>
-            <span className="font-medium">{value}</span>
-        </div>
-    );
 }
 
 /**
@@ -600,23 +584,23 @@ export default function AdminOrdersPage() {
                                                     </Button>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <Field
+                                                    <DetailRow
                                                         label="Name"
                                                         value={order.customerName}
                                                     />
-                                                    <Field
+                                                    <DetailRow
                                                         label="Phone"
                                                         value={order.phone}
                                                     />
-                                                    <Field
+                                                    <DetailRow
                                                         label="Address"
                                                         value={order.addressLine}
                                                     />
-                                                    <Field
+                                                    <DetailRow
                                                         label="City"
                                                         value={order.city}
                                                     />
-                                                    <Field
+                                                    <DetailRow
                                                         label="Postal"
                                                         value={order.zip}
                                                     />
