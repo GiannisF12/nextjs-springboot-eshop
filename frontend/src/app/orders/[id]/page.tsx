@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { LocalTime } from "@/components/local-time";
 import { resolveImageUrl } from "@/lib/http";
 import {getOrder, OrderStatus, OrderStatusChange} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -40,20 +41,6 @@ function flowIndex(status: OrderStatus) {
     return ORDER_FLOW.indexOf(status);
 }
 
-/**
- * Compact timestamp for the timeline — single line, user's locale.
- * e.g. "Apr 24, 10:42". Year omitted on purpose to keep the step label
- * short; the full created-at is already shown in the order header.
- */
-function formatStep(iso: string): string {
-    return new Date(iso).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-}
-
 function StatusTimeline({
     status,
     history,
@@ -61,12 +48,15 @@ function StatusTimeline({
     status: OrderStatus;
     history: OrderStatusChange[];
 }) {
-    // Build a quick lookup: status -> the earliest changedAt we have for
-    // it. "Earliest" in case an admin bounces between statuses — we want
-    // the first time the order *reached* each step.
+    // Build a quick lookup: status -> the most recent changedAt for it.
+    // If an admin bounces between statuses (mis-click, re-deliver after a
+    // failed delivery, etc.) the timeline should reflect the *current*
+    // truth: when did the order actually become DELIVERED in its present
+    // state, not when it briefly was earlier. Repository already returns
+    // history in changedAt-asc order, so each later assignment wins.
     const firstAt = new Map<OrderStatus, string>();
     for (const h of history) {
-        if (!firstAt.has(h.status)) firstAt.set(h.status, h.changedAt);
+        firstAt.set(h.status, h.changedAt);
     }
 
     // The cancellation timestamp lives in history, not on the order row
@@ -82,7 +72,10 @@ function StatusTimeline({
                 <div className="mt-1 text-xs text-red-600">
                     This order will not be processed further.
                     {cancelledAt && (
-                        <> · Cancelled on {formatStep(cancelledAt)}</>
+                        <>
+                            {" · "}Cancelled on{" "}
+                            <LocalTime iso={cancelledAt} format="short" />
+                        </>
                     )}
                 </div>
             </div>
@@ -96,11 +89,13 @@ function StatusTimeline({
             <div className="mb-6 text-sm font-semibold">Order progress</div>
 
             <div className="relative">
-                {/* Connecting Line */}
+                {/* Connecting line — grey base, green fill grows up to the
+                    current step. Progress is conveyed entirely by the line
+                    so the emoji bubbles can stay neutral and readable. */}
                 <div className="absolute top-4 left-0 right-0 h-0.5 bg-muted" />
 
                 <div
-                    className="absolute top-4 left-0 h-0.5 bg-blue-600 transition-all duration-500"
+                    className="absolute top-4 left-0 h-0.5 bg-green-600 transition-all duration-500"
                     style={{
                         width:
                             current <= 0
@@ -123,17 +118,20 @@ function StatusTimeline({
                                 key={step}
                                 className="flex flex-col items-center text-center"
                             >
-                                {/* Circle */}
+                                {/* Circle — always neutral background, the
+                                    emoji icon stays its natural colour. The
+                                    active step gets a subtle scale + ring
+                                    so it's still distinguishable without
+                                    using a fill colour. */}
                                 <div
                                     className={[
-                                        "z-10 flex h-8 w-8 items-center justify-center rounded-full border text-sm transition-all duration-300",
-                                        done &&
-                                        "bg-green-600 border-green-600 text-white",
+                                        "z-10 flex h-8 w-8 items-center justify-center rounded-full border bg-background text-sm transition-all duration-300",
+                                        done && "border-green-600",
                                         active &&
-                                        "bg-blue-600 border-blue-600 text-white scale-110 shadow-lg",
+                                        "border-green-600 scale-110 shadow-md ring-2 ring-green-600/30",
                                         !done &&
                                         !active &&
-                                        "bg-background border-muted-foreground/30 text-muted-foreground",
+                                        "border-muted-foreground/30",
                                     ]
                                         .filter(Boolean)
                                         .join(" ")}
@@ -146,7 +144,7 @@ function StatusTimeline({
                                     className={[
                                         "mt-2 text-xs transition-colors duration-300",
                                         done && "text-green-700",
-                                        active && "text-blue-700 font-semibold",
+                                        active && "text-green-700 font-semibold",
                                         !done &&
                                         !active &&
                                         "text-muted-foreground",
@@ -161,7 +159,14 @@ function StatusTimeline({
                                     actually been reached. Fixed min-height
                                     so future-step columns still align. */}
                                 <div className="mt-1 min-h-[1rem] text-[10px] text-muted-foreground">
-                                    {reachedAt ? formatStep(reachedAt) : ""}
+                                    {reachedAt ? (
+                                        <LocalTime
+                                            iso={reachedAt}
+                                            format="short"
+                                        />
+                                    ) : (
+                                        ""
+                                    )}
                                 </div>
                             </li>
                         );
@@ -202,7 +207,7 @@ export default async function OrderPage({ params }: Props) {
                             {order.status}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                            Created at {new Date(order.createdAt).toLocaleString()}
+                            Created at <LocalTime iso={order.createdAt} />
                         </span>
                     </div>
                 </div>
