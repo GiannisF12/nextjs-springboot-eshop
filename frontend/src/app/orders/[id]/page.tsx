@@ -206,6 +206,11 @@ export default async function OrderPage({ params }: Props) {
                         <Badge className={`${statusStyles(order.status)} border-0`}>
                             {order.status}
                         </Badge>
+                        <Badge variant="outline" className="font-normal">
+                            {order.paymentMethod === "COD"
+                                ? "💶 Cash on delivery"
+                                : "💳 Card"}
+                        </Badge>
                         <span className="text-sm text-muted-foreground">
                             Created at <LocalTime iso={order.createdAt} />
                         </span>

@@ -7,6 +7,7 @@ import com.giannis.eshop.model.Order;
 import com.giannis.eshop.model.OrderItem;
 import com.giannis.eshop.model.OrderStatus;
 import com.giannis.eshop.model.OrderStatusHistory;
+import com.giannis.eshop.model.PaymentMethod;
 import com.giannis.eshop.model.Product;
 import com.giannis.eshop.model.ProductVariant;
 import com.giannis.eshop.model.DiscountCode;
@@ -48,6 +49,13 @@ public class OrderService {
     @Transactional
     public OrderResponse create(CreateOrderRequest req, AppUser user) {
 
+        // Default to COD if the client didn't send a method. The frontend
+        // currently only allows COD anyway, but this keeps the API
+        // forgiving for any direct-API consumer (mobile app, scripts).
+        PaymentMethod paymentMethod = req.paymentMethod() != null
+                ? req.paymentMethod()
+                : PaymentMethod.COD;
+
         Order order = Order.builder()
                 .user(user)
                 .customerName(req.customerName())
@@ -57,6 +65,7 @@ public class OrderService {
                 .zip(req.zip())
                 .total(BigDecimal.ZERO)
                 .status(OrderStatus.NEW)
+                .paymentMethod(paymentMethod)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -194,6 +203,7 @@ public class OrderService {
                 o.getDiscountCode(),
                 o.getDiscountPercent(),
                 o.getStatus(),
+                o.getPaymentMethod(),
                 items,
                 history
         );

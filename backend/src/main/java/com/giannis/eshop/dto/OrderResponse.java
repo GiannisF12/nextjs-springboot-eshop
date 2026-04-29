@@ -1,6 +1,7 @@
 package com.giannis.eshop.dto;
 
 import com.giannis.eshop.model.OrderStatus;
+import com.giannis.eshop.model.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -20,6 +21,8 @@ public record OrderResponse(
         /** Percent-off snapshot at checkout, or null. */
         Integer discountPercent,
         OrderStatus status,
+        /** How the customer paid (COD or STRIPE). */
+        PaymentMethod paymentMethod,
         List<Item> items,
         /**
          * Timeline of status transitions, oldest first. Always contains at

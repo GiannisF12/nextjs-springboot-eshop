@@ -11,6 +11,7 @@ import { useCart } from "@/lib/cart-store";
 import { useCartSync } from "@/lib/use-cart-sync";
 import {
     type DiscountCode,
+    type PaymentMethod,
     createOrder,
     validateDiscountCode,
 } from "@/lib/api";
@@ -85,6 +86,11 @@ export default function CheckoutPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Payment method. STRIPE is intentionally not selectable yet — the
+    // online-payments integration ships in a later phase. Until then,
+    // every order placed through the UI is COD.
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
 
     // Discount-code state. `applied` holds the validated code from the
     // server once the customer clicks Apply; until then we only have
@@ -177,6 +183,7 @@ export default function CheckoutPage() {
                 // Only include when the customer has successfully
                 // applied a code — the backend re-validates anyway.
                 ...(applied ? { discountCode: applied.code } : {}),
+                paymentMethod,
             };
 
             const created = await createOrder(payload);
@@ -332,6 +339,65 @@ export default function CheckoutPage() {
                                 That code isn&apos;t valid or has been disabled.
                             </p>
                         )}
+                    </div>
+
+                    {/* Payment method picker. Only COD is selectable
+                        right now — online card payments via Stripe are
+                        coming in a follow-up. The disabled card option
+                        is shown anyway so the customer can see the
+                        roadmap and we get a real preview of the final
+                        layout. */}
+                    <div className="rounded-md border bg-muted/30 p-3">
+                        <p className="mb-2 text-sm font-medium">
+                            Payment method
+                        </p>
+                        <div className="space-y-2">
+                            <label className="flex cursor-pointer items-start gap-3 rounded-md border bg-background p-3 hover:border-foreground/40">
+                                <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="COD"
+                                    checked={paymentMethod === "COD"}
+                                    onChange={() => setPaymentMethod("COD")}
+                                    disabled={submitting}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1">
+                                    <div className="text-sm font-medium">
+                                        Cash on delivery
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Pay the courier in cash when your
+                                        order arrives.
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label
+                                className="flex cursor-not-allowed items-start gap-3 rounded-md border bg-background p-3 opacity-60"
+                                aria-disabled="true"
+                            >
+                                <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="STRIPE"
+                                    disabled
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                        Card payment
+                                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                                            Coming soon
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Pay securely online with your debit
+                                        or credit card.
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     {/* Totals summary — shows subtotal + discount line +

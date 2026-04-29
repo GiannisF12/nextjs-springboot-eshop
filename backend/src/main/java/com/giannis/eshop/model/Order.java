@@ -61,10 +61,22 @@ public class Order {
     @Builder.Default
     private OrderStatus status = OrderStatus.NEW;
 
+    /**
+     * How the customer is paying. Defaults to COD; Stripe is reserved
+     * for the upcoming online-payments integration. Stored as VARCHAR
+     * so adding a new payment method later is just an enum addition,
+     * no schema change.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 16)
+    @Builder.Default
+    private PaymentMethod paymentMethod = PaymentMethod.COD;
+
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
         if (this.status == null) this.status = OrderStatus.NEW;
+        if (this.paymentMethod == null) this.paymentMethod = PaymentMethod.COD;
     }
 
     @OneToMany(

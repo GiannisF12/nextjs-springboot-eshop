@@ -180,6 +180,13 @@ export type CreateOrderItem = {
     qty: number;
 };
 
+/**
+ * How the customer pays. COD = αντικαταβολή, courier collects cash on
+ * delivery. STRIPE = upcoming online card payments (not selectable in
+ * the UI yet, but the type exists so the contract is final).
+ */
+export type PaymentMethod = "COD" | "STRIPE";
+
 export type CreateOrderRequest = {
     customerName: string;
     phone: string;
@@ -189,6 +196,8 @@ export type CreateOrderRequest = {
     items: CreateOrderItem[];
     /** Optional promo code — server re-validates and re-calculates. */
     discountCode?: string;
+    /** Defaults to COD on the server if omitted. */
+    paymentMethod?: PaymentMethod;
 };
 
 export type OrderItem = {
@@ -230,6 +239,8 @@ export type OrderResponse = {
     /** Percent-off snapshot, if any was applied at checkout. */
     discountPercent: number | null;
     status: OrderStatus;
+    /** How the customer paid (COD or STRIPE). */
+    paymentMethod: PaymentMethod;
     items: OrderItem[];
     statusHistory: OrderStatusChange[];
 };

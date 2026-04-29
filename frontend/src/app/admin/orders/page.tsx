@@ -533,6 +533,19 @@ export default function AdminOrdersPage() {
 
                                         <div className="flex items-center gap-2">
                                             <span
+                                                className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium"
+                                                title={
+                                                    order.paymentMethod ===
+                                                    "COD"
+                                                        ? "Cash on delivery"
+                                                        : "Paid by card"
+                                                }
+                                            >
+                                                {order.paymentMethod === "COD"
+                                                    ? "💶 Cash"
+                                                    : "💳 Card"}
+                                            </span>
+                                            <span
                                                 className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}
                                             >
                                                 {order.status}
