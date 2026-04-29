@@ -16,6 +16,12 @@ public record OrderResponse(
         String city,
         String zip,
         BigDecimal total,
+        /**
+         * Shipping fee snapshot included inside `total`. Stored so the
+         * order detail page can show a Subtotal / Shipping / Total
+         * breakdown that lines up with what the customer paid.
+         */
+        BigDecimal shippingCost,
         /** Discount code applied at checkout, or null. */
         String discountCode,
         /** Percent-off snapshot at checkout, or null. */

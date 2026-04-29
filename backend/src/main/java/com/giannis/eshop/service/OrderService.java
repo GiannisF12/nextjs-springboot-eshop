@@ -34,6 +34,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final OrderStatusHistoryRepository statusHistoryRepository;
     private final DiscountCodeRepository discountCodeRepository;
+    private final StoreSettingsService storeSettingsService;
 
     /**
      * Places an order. All-or-nothing:
@@ -118,6 +119,13 @@ public class OrderService {
             order.getItems().add(item);
         }
 
+        // Snapshot the pre-discount items subtotal — we compare this
+        // against the free-shipping threshold below, so a customer with
+        // €60 of items and a 50% code still qualifies for free shipping
+        // when the threshold is €50. Reads naturally as "free shipping
+        // on orders over €X in product value".
+        BigDecimal itemsSubtotal = total;
+
         // If the checkout form included a discount code, re-validate it
         // server-side and apply it to the total. Client-supplied percents
         // are never trusted — we always look up the current value.
@@ -138,6 +146,14 @@ public class OrderService {
             order.setDiscountCode(code.getCode());
             order.setDiscountPercent(code.getPercentOff());
         }
+
+        // Shipping is computed server-side against the current store
+        // settings — never trust the client's number. Added on TOP of
+        // the (already-discounted) total: discount cuts product cost,
+        // shipping is a separate line.
+        BigDecimal shippingCost = storeSettingsService.computeShippingFor(itemsSubtotal);
+        order.setShippingCost(shippingCost);
+        total = total.add(shippingCost).setScale(2, RoundingMode.HALF_UP);
 
         order.setTotal(total);
         Order saved = orderRepository.save(order);
@@ -200,6 +216,7 @@ public class OrderService {
                 o.getCity(),
                 o.getZip(),
                 o.getTotal(),
+                o.getShippingCost() != null ? o.getShippingCost() : BigDecimal.ZERO,
                 o.getDiscountCode(),
                 o.getDiscountPercent(),
                 o.getStatus(),

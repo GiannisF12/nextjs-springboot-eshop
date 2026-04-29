@@ -115,6 +115,12 @@ public class SecurityConfig {
                         // in an inactive state.
                         .requestMatchers(HttpMethod.POST, "/api/discounts/validate").permitAll()
 
+                        // Public read of store settings — checkout needs
+                        // the shipping rate. Updates live under
+                        // /api/admin/settings, locked down by the
+                        // /api/admin/** rule below.
+                        .requestMatchers(HttpMethod.GET, "/api/settings").permitAll()
+
                         // dedicated admin area (Option B)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 

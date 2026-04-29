@@ -220,6 +220,16 @@ export default async function OrderPage({ params }: Props) {
                 <div className="text-right">
                     <div className="text-sm text-muted-foreground">Total</div>
                     <div className="text-xl font-semibold">€{Number(order.total).toFixed(2)}</div>
+                    {Number(order.shippingCost) > 0 ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            includes €{Number(order.shippingCost).toFixed(2)}{" "}
+                            shipping
+                        </div>
+                    ) : (
+                        <div className="mt-1 text-xs text-green-700">
+                            free shipping ✓
+                        </div>
+                    )}
                     {order.discountCode && (
                         <div className="mt-1 text-xs text-green-700">
                             −{order.discountPercent}% with{" "}

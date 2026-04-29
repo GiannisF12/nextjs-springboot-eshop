@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -12,7 +12,10 @@ import { useCartSync } from "@/lib/use-cart-sync";
 import {
     type DiscountCode,
     type PaymentMethod,
+    type StoreSettings,
+    computeShipping,
     createOrder,
+    getStoreSettings,
     validateDiscountCode,
 } from "@/lib/api";
 
@@ -101,16 +104,43 @@ export default function CheckoutPage() {
         "idle" | "checking" | "invalid"
     >("idle");
 
+    // Live store settings for the shipping preview. Loaded once on
+    // mount; the backend re-runs the same calculation at order creation
+    // so this is purely a UI hint, never the source of truth.
+    const [settings, setSettings] = useState<StoreSettings | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        void getStoreSettings()
+            .then((s) => {
+                if (!cancelled) setSettings(s);
+            })
+            .catch(() => {
+                // Non-fatal: if settings fail to load we just don't show
+                // the shipping line. The order will still go through and
+                // the backend will compute shipping correctly.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     /**
      * Derived totals — if a code is applied we take the percent off the
      * raw cart total, rounded to 2 decimals (same rounding the backend
-     * uses). The backend is the source of truth at order creation, so
-     * the number shown here is just a preview.
+     * uses). Shipping is added on top, matching the backend formula:
+     *
+     *     payable = items*(1 - pct/100) + shipping
+     *
+     * Free shipping is keyed off the *pre-discount* items subtotal, so
+     * the rule reads "free shipping over €X in product value".
      */
     const discountAmount = applied
         ? Math.round(total * applied.percentOff) / 100
         : 0;
-    const payableTotal = Math.max(0, total - discountAmount);
+    const itemsAfterDiscount = Math.max(0, total - discountAmount);
+    const shippingCost = settings ? computeShipping(total, settings) : 0;
+    const payableTotal =
+        Math.round((itemsAfterDiscount + shippingCost) * 100) / 100;
 
     async function onApplyCode() {
         const code = codeInput.trim();
@@ -400,9 +430,10 @@ export default function CheckoutPage() {
                         </div>
                     </div>
 
-                    {/* Totals summary — shows subtotal + discount line +
-                        final payable amount so there are no surprises
-                        when the order is submitted. */}
+                    {/* Totals summary — subtotal + (optional discount) +
+                        shipping + final payable. Shipping comes from the
+                        live store settings; backend recomputes server-
+                        side at order creation. */}
                     <div className="rounded-md border p-3 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">
@@ -416,6 +447,32 @@ export default function CheckoutPage() {
                                     Discount ({applied.code} −{applied.percentOff}%)
                                 </span>
                                 <span>−€{discountAmount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {settings && (
+                            <div className="mt-1 flex justify-between">
+                                <span className="text-muted-foreground">
+                                    Shipping
+                                    {settings.freeShippingThreshold > 0 &&
+                                        shippingCost === 0 && (
+                                            <span className="ml-1 text-xs text-green-700">
+                                                (free over €
+                                                {settings.freeShippingThreshold.toFixed(
+                                                    2
+                                                )}
+                                                )
+                                            </span>
+                                        )}
+                                </span>
+                                <span>
+                                    {shippingCost === 0 ? (
+                                        <span className="text-green-700">
+                                            Free
+                                        </span>
+                                    ) : (
+                                        `€${shippingCost.toFixed(2)}`
+                                    )}
+                                </span>
                             </div>
                         )}
                         <div className="mt-2 flex justify-between border-t pt-2 font-semibold">

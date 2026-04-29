@@ -234,6 +234,12 @@ export type OrderResponse = {
     city: string;
     zip: string;
     total: number;
+    /**
+     * Shipping fee included inside `total`. Snapshot taken at checkout
+     * — the order detail page uses it to display a Subtotal/Shipping/
+     * Total breakdown that lines up with what the customer paid.
+     */
+    shippingCost: number;
     /** Discount code snapshot, if any was applied at checkout. */
     discountCode: string | null;
     /** Percent-off snapshot, if any was applied at checkout. */
@@ -562,4 +568,52 @@ export async function validateDiscountCode(
         if (e instanceof Error && e.message.startsWith("404")) return null;
         throw e;
     }
+}
+
+/* -------------------------- Store settings ------------------------- */
+
+/**
+ * Shop-wide settings the admin can edit live (no redeploy). Only
+ * shipping fields exist today; we'll grow this object as more knobs
+ * move out of code into the database (currency, store name, banner...).
+ */
+export type StoreSettings = {
+    shippingFlatRate: number;
+    freeShippingThreshold: number;
+    /** ISO timestamp — when the row was last saved. */
+    updatedAt: string;
+};
+
+/** Public — used by the checkout page to know how much shipping to display. */
+export async function getStoreSettings(): Promise<StoreSettings> {
+    return apiFetch<StoreSettings>("/api/settings", { cache: "no-store" });
+}
+
+/** Admin only — wired to the /admin/settings page. */
+export async function updateStoreSettings(
+    payload: Pick<StoreSettings, "shippingFlatRate" | "freeShippingThreshold">
+): Promise<StoreSettings> {
+    return apiFetch<StoreSettings>("/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Mirror of StoreSettingsService.computeShippingFor on the backend.
+ * Used on the checkout page to preview shipping live as the cart
+ * changes — the backend re-runs the same calculation server-side at
+ * order creation, so this is just a UI hint, never the source of truth.
+ */
+export function computeShipping(
+    subtotal: number,
+    settings: StoreSettings
+): number {
+    if (
+        settings.freeShippingThreshold > 0 &&
+        subtotal >= settings.freeShippingThreshold
+    ) {
+        return 0;
+    }
+    return settings.shippingFlatRate;
 }

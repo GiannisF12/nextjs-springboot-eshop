@@ -45,6 +45,15 @@ public class Order {
     private BigDecimal total;
 
     /**
+     * Shipping fee snapshot. Stored on the order so historical orders
+     * still show the price the customer actually paid even if the
+     * admin later changes the rate in store_settings.
+     */
+    @Column(name = "shipping_cost", nullable = false)
+    @Builder.Default
+    private BigDecimal shippingCost = BigDecimal.ZERO;
+
+    /**
      * Snapshot of the discount code applied at checkout. Null if none.
      * Stored so order history reads correctly even if the admin later
      * deletes the code from discount_codes.
