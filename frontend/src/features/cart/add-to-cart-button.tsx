@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
 import type { Product } from "@/lib/api";
@@ -13,15 +14,16 @@ import type { Product } from "@/lib/api";
  * a size. Sold-out sizes are shown but disabled so the customer can see
  * at a glance what exists.
  *
- * We also track how many of this (product, size) are *already in the
- * cart*, and refuse to add more once the cart count equals the variant's
- * stock. That stops the 409-at-checkout embarrassment.
+ * The customer can also pick a quantity with +/- before adding. We cap
+ * the + button at whatever stock is left after subtracting what's
+ * already in their cart, so the cart never holds more than the variant
+ * actually has — preventing a 409-at-checkout embarrassment.
  */
 export function AddToCartButton({ product }: { product: Product }) {
     const add = useCart((s) => s.add);
     const cartItems = useCart((s) => s.items);
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
-    const [added, setAdded] = useState(false);
+    const [qty, setQty] = useState(1);
 
     // Look up the variant object for whichever size the user picked.
     // We use this both to check stock and to pass its exact size string
@@ -42,7 +44,17 @@ export function AddToCartButton({ product }: { product: Product }) {
         : 0;
 
     const hasAnyStock = product.variants.some((v) => v.stock > 0);
+    // Clamp the user's chosen qty against the cap. This stops the +
+    // button from going past stock if the user switches to a smaller-
+    // stock size after picking a high quantity on the previous one.
+    const cappedQty = Math.min(Math.max(qty, 1), Math.max(remainingInStock, 1));
     const canAdd = selectedVariant !== null && remainingInStock > 0;
+
+    function handleSelectSize(size: string) {
+        setSelectedSize(size);
+        // Reset qty when switching size so the cap re-applies cleanly.
+        setQty(1);
+    }
 
     function handleAdd() {
         if (!canAdd || !selectedVariant) return;
@@ -55,11 +67,16 @@ export function AddToCartButton({ product }: { product: Product }) {
             category: product.category,
             size: selectedVariant.size,
             maxStock: selectedVariant.stock,
-            qty: 1,
+            qty: cappedQty,
         });
 
-        setAdded(true);
-        setTimeout(() => setAdded(false), 900);
+        toast.success(
+            `Added ${cappedQty}× ${product.title} (size ${selectedVariant.size}) to cart`
+        );
+
+        // Reset qty back to 1 — common pattern, customer probably wants
+        // 1 of the next thing they add, not whatever they just picked.
+        setQty(1);
     }
 
     // Edge cases first — no variants at all, or every variant at zero stock.
@@ -81,14 +98,12 @@ export function AddToCartButton({ product }: { product: Product }) {
 
     // Pick the right button label based on state.
     let buttonLabel: string;
-    if (added) {
-        buttonLabel = "Added ✓";
-    } else if (selectedSize === null) {
+    if (selectedSize === null) {
         buttonLabel = "Pick a size first";
     } else if (remainingInStock <= 0) {
         buttonLabel = `Max in cart (${inCartQty})`;
     } else {
-        buttonLabel = `Add size ${selectedSize} to cart`;
+        buttonLabel = `Add ${cappedQty} to cart`;
     }
 
     return (
@@ -113,7 +128,7 @@ export function AddToCartButton({ product }: { product: Product }) {
                                 key={variant.id}
                                 type="button"
                                 disabled={outOfStock}
-                                onClick={() => setSelectedSize(variant.size)}
+                                onClick={() => handleSelectSize(variant.size)}
                                 title={
                                     outOfStock
                                         ? "Out of stock"
@@ -159,6 +174,49 @@ export function AddToCartButton({ product }: { product: Product }) {
                     </p>
                 )}
             </div>
+
+            {/* Quantity stepper — only meaningful once a size is picked
+                and there's stock left. The +/- buttons cap themselves at
+                remainingInStock so the customer can't overshoot. */}
+            {selectedVariant && remainingInStock > 0 && (
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium">Quantity</span>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={cappedQty <= 1}
+                            onClick={() => setQty((q) => Math.max(1, q - 1))}
+                            aria-label="Decrease quantity"
+                        >
+                            −
+                        </Button>
+                        <span className="w-8 text-center text-sm font-semibold">
+                            {cappedQty}
+                        </span>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={cappedQty >= remainingInStock}
+                            onClick={() =>
+                                setQty((q) =>
+                                    Math.min(remainingInStock, q + 1)
+                                )
+                            }
+                            aria-label="Increase quantity"
+                        >
+                            +
+                        </Button>
+                    </div>
+                    {cappedQty >= remainingInStock && (
+                        <span className="text-xs text-amber-600">
+                            max {remainingInStock} available
+                        </span>
+                    )}
+                </div>
+            )}
 
             <Button
                 type="button"

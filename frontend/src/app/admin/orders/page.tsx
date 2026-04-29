@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AdminGuard } from "@/features/admin/admin-guard";
 import { AdminNav } from "@/features/admin/admin-nav";
 import {
@@ -12,6 +14,9 @@ import {
     updateOrderStatus,
 } from "@/lib/api";
 import { STATUS_COLORS } from "@/lib/order-status-colors";
+
+/** "all" sentinel = no status filter applied. */
+type StatusFilter = OrderStatus | "all";
 
 const STATUS_OPTIONS: OrderStatus[] = [
     "NEW",
@@ -206,6 +211,16 @@ export default function AdminOrdersPage() {
     // window.print() fires, cleared after.
     const [printingId, setPrintingId] = useState<number | null>(null);
 
+    // Filter state. All client-side — the admin endpoint returns the
+    // full list and we slice it locally. If the order count ever grows
+    // past a few hundred we can move this server-side, but the current
+    // dataset is small enough that re-filtering on every keystroke is
+    // imperceptible.
+    const [query, setQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+
     const printingOrder =
         printingId !== null
             ? orders.find((o) => o.id === printingId) ?? null
@@ -228,16 +243,71 @@ export default function AdminOrdersPage() {
         void loadOrders();
     }, []);
 
+    /**
+     * Apply all active filters in one pass:
+     *  - text query matches against id, customer name, phone, city
+     *    (case-insensitive). One field a typical admin would search by.
+     *  - status filter narrows to a single state, or "all" lets through.
+     *  - date range compares the order's created-at *date* (not time) to
+     *    the from/to bounds, so the "to" day is fully inclusive without
+     *    forcing the admin to think in 23:59:59 terms.
+     */
+    const filteredOrders = useMemo(() => {
+        const q = query.trim().toLowerCase();
+
+        return orders.filter((o) => {
+            if (statusFilter !== "all" && o.status !== statusFilter) {
+                return false;
+            }
+
+            if (q) {
+                const haystack = [
+                    String(o.id),
+                    o.customerName,
+                    o.phone,
+                    o.city,
+                ]
+                    .join(" ")
+                    .toLowerCase();
+                if (!haystack.includes(q)) return false;
+            }
+
+            // ISO timestamps sort/compare correctly as strings, so we
+            // just slice off the "YYYY-MM-DD" prefix to compare against
+            // the date-input value verbatim.
+            const orderDate = o.createdAt.slice(0, 10);
+            if (dateFrom && orderDate < dateFrom) return false;
+            if (dateTo && orderDate > dateTo) return false;
+
+            return true;
+        });
+    }, [orders, query, statusFilter, dateFrom, dateTo]);
+
+    const hasActiveFilters =
+        query !== "" ||
+        statusFilter !== "all" ||
+        dateFrom !== "" ||
+        dateTo !== "";
+
+    function clearFilters() {
+        setQuery("");
+        setStatusFilter("all");
+        setDateFrom("");
+        setDateTo("");
+    }
+
     async function handleStatusChange(orderId: number, newStatus: OrderStatus) {
         setUpdatingId(orderId);
-        setError(null);
         try {
             const updated = await updateOrderStatus(orderId, newStatus);
             setOrders((prev) =>
                 prev.map((o) => (o.id === updated.id ? updated : o))
             );
+            toast.success(`Order #${orderId} → ${newStatus}`);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Failed to update status.");
+            toast.error(
+                e instanceof Error ? e.message : "Failed to update status."
+            );
         } finally {
             setUpdatingId(null);
         }
@@ -260,11 +330,12 @@ export default function AdminOrdersPage() {
         try {
             await navigator.clipboard.writeText(block);
             setCopiedId(order.id);
+            toast.success("Shipping address copied");
             setTimeout(() => {
                 setCopiedId((cur) => (cur === order.id ? null : cur));
             }, 1500);
         } catch {
-            setError("Could not copy to clipboard.");
+            toast.error("Could not copy to clipboard.");
         }
     }
 
@@ -316,7 +387,17 @@ export default function AdminOrdersPage() {
 
                 <div className="rounded-lg border">
                     <div className="flex items-center justify-between border-b px-4 py-3">
-                        <h2 className="text-lg font-semibold">Orders</h2>
+                        <h2 className="text-lg font-semibold">
+                            Orders
+                            {!loading && (
+                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                    ({filteredOrders.length}
+                                    {hasActiveFilters &&
+                                        ` of ${orders.length}`}
+                                    )
+                                </span>
+                            )}
+                        </h2>
                         <Button
                             type="button"
                             variant="outline"
@@ -324,6 +405,82 @@ export default function AdminOrdersPage() {
                         >
                             Refresh
                         </Button>
+                    </div>
+
+                    {/* Filter bar — search by id/name/phone/city, narrow by
+                        status, narrow by date range. All client-side, all
+                        clearable in one click. */}
+                    <div className="border-b bg-muted/30 px-4 py-3">
+                        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                    Search
+                                </label>
+                                <Input
+                                    type="search"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Order #, name, phone, city"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                    Status
+                                </label>
+                                <select
+                                    className="h-9 rounded-md border bg-background px-2 text-sm"
+                                    value={statusFilter}
+                                    onChange={(e) =>
+                                        setStatusFilter(
+                                            e.target.value as StatusFilter
+                                        )
+                                    }
+                                >
+                                    <option value="all">All</option>
+                                    {STATUS_OPTIONS.map((s) => (
+                                        <option key={s} value={s}>
+                                            {STATUS_LABELS[s]}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                    From
+                                </label>
+                                <Input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) =>
+                                        setDateFrom(e.target.value)
+                                    }
+                                    max={dateTo || undefined}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                    To
+                                </label>
+                                <Input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                    min={dateFrom || undefined}
+                                />
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={clearFilters}
+                                disabled={!hasActiveFilters}
+                            >
+                                Clear
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="divide-y">
@@ -335,8 +492,19 @@ export default function AdminOrdersPage() {
                             <p className="px-4 py-4 text-sm text-muted-foreground">
                                 No orders yet.
                             </p>
+                        ) : filteredOrders.length === 0 ? (
+                            <p className="px-4 py-4 text-sm text-muted-foreground">
+                                No orders match your filters.{" "}
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    className="underline hover:no-underline"
+                                >
+                                    Clear filters
+                                </button>
+                            </p>
                         ) : (
-                            orders.map((order) => (
+                            filteredOrders.map((order) => (
                                 <div key={order.id} className="px-4 py-3">
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                         <div

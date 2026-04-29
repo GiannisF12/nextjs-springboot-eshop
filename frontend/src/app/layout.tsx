@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { AuthProvider } from "@/features/auth/auth-context";
@@ -32,6 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </main>
                 <SiteFooter />
             </div>
+            {/* Global toast outlet — see lib/toast.ts and sonner docs.
+                richColors gives green/red variants for success/error
+                without us styling each call. */}
+            <Toaster richColors position="top-right" />
         </AuthProvider>
         </body>
         </html>

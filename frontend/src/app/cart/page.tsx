@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CartSyncNotice } from "@/components/cart-sync-notice";
 import { useCart } from "@/lib/cart-store";
@@ -42,7 +43,13 @@ export default function CartPage() {
                     </p>
                 </div>
 
-                <Button variant="outline" onClick={clear}>
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        clear();
+                        toast.success("Cart cleared");
+                    }}
+                >
                     Clear cart
                 </Button>
             </div>
