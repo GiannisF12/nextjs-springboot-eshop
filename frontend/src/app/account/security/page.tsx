@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
     Card,
     CardContent,
@@ -9,48 +12,76 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/form-field";
+import { PasswordChecklist } from "@/components/password-checklist";
 import { useAuth } from "@/features/auth/auth-context";
 import { changePasswordApi } from "@/lib/api";
+import {
+    type PasswordChangeFormValues,
+    passwordChangeSchema,
+} from "@/lib/validation";
 
 export default function SecurityPage() {
     const { user } = useAuth();
 
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    /**
+     * Same react-hook-form + zod pattern as the rest of the forms.
+     * Reuses passwordChangeSchema from lib/validation, which in turn
+     * shares the same `passwordSchema` rules signup uses — change the
+     * rules in one place and every form picks them up.
+     */
+    const {
+        register,
+        handleSubmit,
+        watch,
+        reset,
+        formState: { errors },
+    } = useForm<PasswordChangeFormValues>({
+        resolver: zodResolver(passwordChangeSchema),
+        mode: "onBlur",
+        defaultValues: {
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+        },
+    });
+
+    const newPasswordValue = watch("newPassword");
+
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [serverError, setServerError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
     if (!user) return null; // layout handles loading/redirect
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setError(null);
+    async function onValid(values: PasswordChangeFormValues) {
+        setServerError(null);
         setSuccess(null);
-
-        if (newPassword !== confirmPassword) {
-            setError("New passwords do not match.");
-            return;
-        }
-        if (newPassword.length < 6) {
-            setError("New password must be at least 6 characters.");
-            return;
-        }
-
         setSaving(true);
         try {
-            await changePasswordApi(currentPassword, newPassword);
+            await changePasswordApi(
+                values.currentPassword,
+                values.newPassword
+            );
             setSuccess("Password changed successfully.");
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
+            // Clear all three fields so the form is ready for another
+            // change without leaving the new password sitting in the DOM.
+            reset({
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            });
         } catch (err: unknown) {
+            // Backend returns 400 when the *current* password is wrong.
+            // Anything else is treated as a generic failure.
             if (err instanceof Error && err.message.startsWith("400")) {
-                setError("Current password is incorrect.");
+                setServerError("Current password is incorrect.");
             } else {
-                setError(err instanceof Error ? err.message : "Password change failed.");
+                setServerError(
+                    err instanceof Error
+                        ? err.message
+                        : "Password change failed."
+                );
             }
         } finally {
             setSaving(false);
@@ -66,45 +97,49 @@ export default function SecurityPage() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <form className="space-y-4" onSubmit={handleSubmit}>
+                <form
+                    className="space-y-4"
+                    onSubmit={handleSubmit(onValid)}
+                    noValidate
+                >
+                    <FormField
+                        label="Current password"
+                        type="password"
+                        autoComplete="current-password"
+                        disabled={saving}
+                        error={errors.currentPassword?.message}
+                        {...register("currentPassword")}
+                    />
+
                     <div>
-                        <label className="text-sm font-medium">Current password</label>
-                        <Input
-                            className="mt-1"
+                        <FormField
+                            label="New password"
                             type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            required
+                            autoComplete="new-password"
+                            placeholder="At least 8 characters"
+                            disabled={saving}
+                            error={errors.newPassword?.message}
+                            {...register("newPassword")}
                         />
+                        <PasswordChecklist value={newPasswordValue} />
                     </div>
-                    <div>
-                        <label className="text-sm font-medium">New password</label>
-                        <Input
-                            className="mt-1"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required
-                            minLength={6}
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">Confirm new password</label>
-                        <Input
-                            className="mt-1"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            minLength={6}
-                        />
-                    </div>
+
+                    <FormField
+                        label="Confirm new password"
+                        type="password"
+                        autoComplete="new-password"
+                        disabled={saving}
+                        error={errors.confirmPassword?.message}
+                        {...register("confirmPassword")}
+                    />
 
                     <Button type="submit" disabled={saving}>
                         {saving ? "Saving..." : "Update password"}
                     </Button>
 
-                    {error && <p className="text-sm text-red-600">{error}</p>}
+                    {serverError && (
+                        <p className="text-sm text-red-600">{serverError}</p>
+                    )}
                     {success && (
                         <p className="text-sm text-green-700">{success}</p>
                     )}

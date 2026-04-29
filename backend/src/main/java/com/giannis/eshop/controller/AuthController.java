@@ -4,6 +4,7 @@ import com.giannis.eshop.dto.AuthUserResponse;
 import com.giannis.eshop.dto.LoginRequest;
 import com.giannis.eshop.dto.RegisterRequest;
 import com.giannis.eshop.model.AppUser;
+import com.giannis.eshop.validation.StrongPassword;
 import com.giannis.eshop.model.Gender;
 import com.giannis.eshop.model.Role;
 import com.giannis.eshop.repository.UserRepository;
@@ -209,7 +210,7 @@ public class AuthController {
     record ChangePasswordRequest(
             @jakarta.validation.constraints.NotBlank String currentPassword,
             @jakarta.validation.constraints.NotBlank
-            @jakarta.validation.constraints.Size(min = 6, message = "New password must be at least 6 characters")
+            @StrongPassword
             String newPassword
     ) {}
 }

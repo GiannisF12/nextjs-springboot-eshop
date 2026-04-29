@@ -3,40 +3,63 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { useAuth } from "@/features/auth/auth-context";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/form-field";
+import { PasswordChecklist } from "@/components/password-checklist";
+import { type SignupFormValues, signupSchema } from "@/lib/validation";
 
 export default function SignupPage() {
     const router = useRouter();
-    const { register } = useAuth();
+    const { register: registerUser } = useAuth();
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    /**
+     * Validation runs on blur (so the user gets feedback when they tab
+     * out of a field) plus on submit. Re-validation while typing is
+     * left default — RHF only re-runs after the field has been
+     * touched, so a fresh page doesn't yell about empty fields.
+     */
+    const {
+        register,
+        handleSubmit,
+        watch,
+        formState: { errors },
+    } = useForm<SignupFormValues>({
+        resolver: zodResolver(signupSchema),
+        mode: "onBlur",
+        defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+        },
+    });
+
+    // Live-watched password value drives the strength checklist below
+    // the field. RHF's `watch` re-renders only this component, so it
+    // stays cheap.
+    const passwordValue = watch("password");
+
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [serverError, setServerError] = useState<string | null>(null);
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setError(null);
-
-        if (password !== confirmPassword) {
-            setError("Passwords do not match.");
-            return;
-        }
-
+    async function onValid(values: SignupFormValues) {
+        setServerError(null);
         setSubmitting(true);
-
         try {
-            await register(email, password, name);
+            await registerUser(values.email, values.password, values.name);
             router.push("/");
         } catch (err: unknown) {
+            // Server-side errors that the client can't predict (email
+            // already taken, network issues). Inline validation has
+            // already filtered out shape mistakes.
             if (err instanceof Error && err.message.includes("409")) {
-                setError("An account with this email already exists.");
+                setServerError("An account with this email already exists.");
             } else {
-                setError("Registration failed. Please try again.");
+                setServerError("Registration failed. Please try again.");
             }
         } finally {
             setSubmitting(false);
@@ -47,35 +70,42 @@ export default function SignupPage() {
         <div className="max-w-md space-y-4">
             <h1 className="text-2xl font-semibold">Create an account</h1>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-                <Input
-                    placeholder="Username"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
+            <form onSubmit={handleSubmit(onValid)} className="space-y-3" noValidate>
+                <FormField
+                    label="Username"
+                    placeholder="Pick a display name"
+                    disabled={submitting}
+                    error={errors.name?.message}
+                    {...register("name")}
                 />
-                <Input
-                    placeholder="Email"
+                <FormField
+                    label="Email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={submitting}
+                    error={errors.email?.message}
+                    {...register("email")}
                 />
-                <Input
-                    placeholder="Password (min 6 characters)"
+                <div>
+                    <FormField
+                        label="Password"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="At least 8 characters"
+                        disabled={submitting}
+                        error={errors.password?.message}
+                        {...register("password")}
+                    />
+                    <PasswordChecklist value={passwordValue} />
+                </div>
+                <FormField
+                    label="Confirm password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
-                    required
-                />
-                <Input
-                    placeholder="Confirm password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    minLength={6}
-                    required
+                    autoComplete="new-password"
+                    disabled={submitting}
+                    error={errors.confirmPassword?.message}
+                    {...register("confirmPassword")}
                 />
 
                 <Button type="submit" className="w-full" disabled={submitting}>
@@ -83,7 +113,9 @@ export default function SignupPage() {
                 </Button>
             </form>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {serverError && (
+                <p className="text-sm text-red-600">{serverError}</p>
+            )}
 
             <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}

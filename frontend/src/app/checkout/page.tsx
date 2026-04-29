@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/form-field";
 import { CartSyncNotice } from "@/components/cart-sync-notice";
 import { useCart } from "@/lib/cart-store";
 import { useCartSync } from "@/lib/use-cart-sync";
@@ -18,14 +21,10 @@ import {
     getStoreSettings,
     validateDiscountCode,
 } from "@/lib/api";
-
-type FormState = {
-    customerName: string;
-    phone: string;
-    addressLine: string;
-    city: string;
-    zip: string;
-};
+import {
+    type CheckoutFormValues,
+    checkoutSchema,
+} from "@/lib/validation";
 
 /**
  * Turn the raw error message thrown by apiFetch into something we can
@@ -79,12 +78,25 @@ export default function CheckoutPage() {
     // customer clicks Checkout, but we re-check here as a safety net.
     const { syncing, issues: syncIssues } = useCartSync();
 
-    const [form, setForm] = useState<FormState>({
-        customerName: "",
-        phone: "",
-        addressLine: "",
-        city: "",
-        zip: "",
+    /**
+     * react-hook-form with a zod resolver. `onBlur` validation gives
+     * the customer immediate feedback when they tab out of a field
+     * without yelling at them while they're still typing it.
+     */
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<CheckoutFormValues>({
+        resolver: zodResolver(checkoutSchema),
+        mode: "onBlur",
+        defaultValues: {
+            customerName: "",
+            phone: "",
+            addressLine: "",
+            city: "",
+            zip: "",
+        },
     });
 
     const [submitting, setSubmitting] = useState(false);
@@ -167,15 +179,7 @@ export default function CheckoutPage() {
         setCodeStatus("idle");
     }
 
-    const canSubmit = useMemo(() => {
-        if (items.length === 0) return false;
-        if (!form.customerName.trim()) return false;
-        if (!form.phone.trim()) return false;
-        if (!form.addressLine.trim()) return false;
-        if (!form.city.trim()) return false;
-        if (!form.zip.trim()) return false;
-        return true;
-    }, [items.length, form]);
+    const canSubmit = items.length > 0;
 
     if (items.length === 0) {
         return (
@@ -189,21 +193,20 @@ export default function CheckoutPage() {
         );
     }
 
-    async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
+    /**
+     * Called by RHF *only* after the schema passes — `values` is the
+     * already-validated, trimmed, typed object. No need to .trim()
+     * anything here, the schema did it.
+     */
+    async function onValid(values: CheckoutFormValues) {
         setError(null);
-
         if (!canSubmit || submitting) return;
 
         try {
             setSubmitting(true);
 
             const payload = {
-                customerName: form.customerName.trim(),
-                phone: form.phone.trim(),
-                addressLine: form.addressLine.trim(),
-                city: form.city.trim(),
-                zip: form.zip.trim(),
+                ...values,
                 items: items.map((it) => ({
                     productId: it.id,
                     size: it.size, // required — backend rejects orders without a size
@@ -257,25 +260,30 @@ export default function CheckoutPage() {
             <CartSyncNotice syncing={syncing} issues={syncIssues} />
 
             <form
-                onSubmit={onSubmit}
+                onSubmit={handleSubmit(onValid)}
                 className={`grid gap-6 lg:grid-cols-2 ${submitting ? "opacity-60" : ""}`}
                 aria-busy={submitting}
+                noValidate
             >
                 <div className="space-y-3 rounded-xl border p-4">
                     <h2 className="font-semibold">Customer details</h2>
 
                     <div className="grid gap-3">
-                        <Input
+                        <FormField
+                            label="Full name"
+                            placeholder="e.g. Maria Papadopoulou"
                             disabled={submitting}
-                            value={form.customerName}
-                            onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-                            placeholder="Full name"
+                            error={errors.customerName?.message}
+                            {...register("customerName")}
                         />
-                        <Input
+                        <FormField
+                            label="Phone"
+                            placeholder="e.g. +30 6912345678"
+                            inputMode="tel"
                             disabled={submitting}
-                            value={form.phone}
-                            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                            placeholder="Phone"
+                            error={errors.phone?.message}
+                            helper="Digits, spaces and dashes only — no letters or emojis"
+                            {...register("phone")}
                         />
                     </div>
                 </div>
@@ -284,23 +292,27 @@ export default function CheckoutPage() {
                     <h2 className="font-semibold">Shipping address</h2>
 
                     <div className="grid gap-3">
-                        <Input
+                        <FormField
+                            label="Address line"
+                            placeholder="e.g. Ermou 25"
                             disabled={submitting}
-                            value={form.addressLine}
-                            onChange={(e) => setForm((f) => ({ ...f, addressLine: e.target.value }))}
-                            placeholder="Address line"
+                            error={errors.addressLine?.message}
+                            {...register("addressLine")}
                         />
-                        <Input
+                        <FormField
+                            label="City"
+                            placeholder="e.g. Athens"
                             disabled={submitting}
-                            value={form.city}
-                            onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                            placeholder="City"
+                            error={errors.city?.message}
+                            {...register("city")}
                         />
-                        <Input
+                        <FormField
+                            label="Postal code"
+                            placeholder="e.g. 10563"
+                            inputMode="numeric"
                             disabled={submitting}
-                            value={form.zip}
-                            onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
-                            placeholder="ZIP"
+                            error={errors.zip?.message}
+                            {...register("zip")}
                         />
                     </div>
 
