@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Dark circle background -->
+  <rect width="32" height="32" rx="8" fill="#0f172a"/>
+  <!-- Shopping bag icon (white) -->
+  <path d="M10 12h12l-1.5 10H11.5L10 12Z" stroke="white" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+  <path d="M13 12c0-1.657 1.343-3 3-3s3 1.343 3 3" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+</svg>
