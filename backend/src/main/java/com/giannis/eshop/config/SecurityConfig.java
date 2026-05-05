@@ -27,11 +27,16 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final UserRepository userRepository;
+
+    @Value("${eshop.cors.allowed-origin}")
+    private String allowedOrigin;
 
     @Bean
     public SecurityContextRepository securityContextRepository() {
@@ -133,7 +138,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:3000"));
+        cfg.setAllowedOrigins(List.of(allowedOrigin));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true); // required for cookies
