@@ -158,11 +158,6 @@ public class DemoDataInitializer implements ApplicationRunner {
                     cat,
                     clothing(6, 10, 8, 5, 3));
 
-            addProduct("Oversized Cream Hoodie",
-                    "59.90",
-                    "https://images.unsplash.com/photo-1556821833-1c8e07e116c5?w=800",
-                    cat,
-                    clothing(4, 7, 9, 6, 2));
 
             addProduct("Athletic Performance Hoodie",
                     "64.90",
@@ -252,11 +247,6 @@ public class DemoDataInitializer implements ApplicationRunner {
                     cat,
                     clothing(8, 14, 12, 7, 4));
 
-            addProduct("Cargo Shorts",
-                    "39.90",
-                    "https://images.unsplash.com/photo-1565693413579-8a73cdba645b?w=800",
-                    cat,
-                    clothing(5, 9, 11, 6, 3));
 
             addProduct("Linen Beach Shorts",
                     "34.90",

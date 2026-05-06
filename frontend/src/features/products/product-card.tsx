@@ -29,8 +29,8 @@ export function ProductCard({ id, title, price, image, category, href }: Props) 
                 </div>
                 <CardContent className="space-y-2 p-4">
                     <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-medium leading-tight">{title}</h3>
-                        <span className="font-semibold">€{price.toFixed(2)}</span>
+                        <h3 className="line-clamp-2 min-h-[2.5rem] font-medium leading-tight">{title}</h3>
+                        <span className="shrink-0 font-semibold">€{price.toFixed(2)}</span>
                     </div>
                     <Badge variant="secondary">{category}</Badge>
                 </CardContent>
