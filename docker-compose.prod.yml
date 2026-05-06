@@ -4,18 +4,16 @@
 
 services:
   postgres:
-    image: 'postgres:16'
+    image: postgres:16
     restart: unless-stopped
     environment:
       POSTGRES_DB: eshop
       POSTGRES_USER: eshop
-      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - 'eshop_pg:/var/lib/postgresql/data'
+      - eshop_pg:/var/lib/postgresql/data
     healthcheck:
-      test:
-        - CMD-SHELL
-        - 'pg_isready -U eshop -d eshop'
+      test: ["CMD-SHELL", "pg_isready -U eshop -d eshop"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -27,30 +25,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/eshop'
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eshop
       SPRING_DATASOURCE_USERNAME: eshop
-      SPRING_DATASOURCE_PASSWORD: '${DB_PASSWORD}'
-      ESHOP_SEED_DEMO_PRODUCTS: 'true'
-      ESHOP_CORS_ALLOWED_ORIGIN: '${DOMAIN_URL}'
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      ESHOP_SEED_DEMO_PRODUCTS: "true"
+      ESHOP_CORS_ALLOWED_ORIGIN: ${DOMAIN_URL}
     volumes:
-      - 'eshop_uploads:/app/uploads'
+      - eshop_uploads:/app/uploads
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: '${NEXT_PUBLIC_API_BASE_URL}'
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     restart: unless-stopped
     depends_on:
       - backend
-    ports:
-      - "3000:3000"
     environment:
-      API_INTERNAL_BASE_URL: 'http://backend:8080'
+      API_INTERNAL_BASE_URL: http://backend:8080
 
 volumes:
-  eshop_pg: null
-  eshop_uploads: null
+  eshop_pg:
+  eshop_uploads:
