@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/features/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -66,9 +67,8 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                 />
-                <Input
+                <PasswordInput
                     placeholder="Password"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
