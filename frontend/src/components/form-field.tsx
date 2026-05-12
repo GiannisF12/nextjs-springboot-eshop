@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,20 +25,31 @@ type FormFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
-    function FormField({ label, error, helper, className, ...inputProps }, ref) {
+    function FormField({ label, error, helper, className, type, ...inputProps }, ref) {
+        const inputClass = cn(
+            error && "border-red-500 focus-visible:ring-red-500/30",
+            className
+        );
+
         return (
             <label className="block space-y-1">
                 <span className="text-sm font-medium">{label}</span>
-                <Input
-                    ref={ref}
-                    aria-invalid={error ? true : undefined}
-                    className={cn(
-                        error &&
-                            "border-red-500 focus-visible:ring-red-500/30",
-                        className
-                    )}
-                    {...inputProps}
-                />
+                {type === "password" ? (
+                    <PasswordInput
+                        ref={ref}
+                        aria-invalid={error ? true : undefined}
+                        className={inputClass}
+                        {...inputProps}
+                    />
+                ) : (
+                    <Input
+                        ref={ref}
+                        type={type}
+                        aria-invalid={error ? true : undefined}
+                        className={inputClass}
+                        {...inputProps}
+                    />
+                )}
                 {error ? (
                     <span className="block text-xs text-red-600">{error}</span>
                 ) : helper ? (
