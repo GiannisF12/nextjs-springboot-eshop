@@ -13,3 +13,8 @@
 # Dev artifacts
 cookies.txt
 /docs
+
+# Personal interview notes
+INTERVIEW_NOTES.md
+generate_notes.py
+interview_file_guide.pdf
