@@ -529,6 +529,29 @@ export default function AdminOrdersPage() {
                                                     ? "💶 Cash"
                                                     : "💳 Card"}
                                             </span>
+                                            {order.paymentStatus !==
+                                                "NOT_REQUIRED" && (
+                                                <span
+                                                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                        order.paymentStatus ===
+                                                        "PAID"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : order.paymentStatus ===
+                                                                "PENDING"
+                                                              ? "bg-amber-100 text-amber-800"
+                                                              : "bg-red-100 text-red-800"
+                                                    }`}
+                                                    title="Card payment status"
+                                                >
+                                                    {order.paymentStatus ===
+                                                    "PAID"
+                                                        ? "Paid"
+                                                        : order.paymentStatus ===
+                                                            "PENDING"
+                                                          ? "Awaiting payment"
+                                                          : "Payment expired"}
+                                                </span>
+                                            )}
                                             <span
                                                 className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}
                                             >

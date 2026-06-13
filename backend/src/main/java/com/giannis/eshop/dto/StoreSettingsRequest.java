@@ -16,8 +16,11 @@ import java.math.BigDecimal;
  * which simply disables the dashboard warning.
  */
 public record StoreSettingsRequest(
-        @NotNull @DecimalMin("0.00") BigDecimal shippingFlatRate,
         @NotNull @DecimalMin("0.00") BigDecimal freeShippingThreshold,
-        @NotNull @Min(0) Integer lowStockThreshold
+        @NotNull @Min(0) Integer lowStockThreshold,
+        /** Offer cash-on-delivery at checkout. */
+        @NotNull Boolean codEnabled,
+        /** Offer card payment (only effective once card is available). */
+        @NotNull Boolean cardEnabled
 ) {
 }

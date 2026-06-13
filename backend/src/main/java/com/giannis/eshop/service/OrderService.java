@@ -7,7 +7,9 @@ import com.giannis.eshop.model.Order;
 import com.giannis.eshop.model.OrderItem;
 import com.giannis.eshop.model.OrderStatus;
 import com.giannis.eshop.model.OrderStatusHistory;
+import com.giannis.eshop.model.Courier;
 import com.giannis.eshop.model.PaymentMethod;
+import com.giannis.eshop.model.PaymentStatus;
 import com.giannis.eshop.model.Product;
 import com.giannis.eshop.model.ProductVariant;
 import com.giannis.eshop.model.DiscountCode;
@@ -35,6 +37,7 @@ public class OrderService {
     private final OrderStatusHistoryRepository statusHistoryRepository;
     private final DiscountCodeRepository discountCodeRepository;
     private final StoreSettingsService storeSettingsService;
+    private final CourierService courierService;
 
     /**
      * Places an order. All-or-nothing:
@@ -57,6 +60,11 @@ public class OrderService {
                 ? req.paymentMethod()
                 : PaymentMethod.COD;
 
+        // Reject (400) a method that isn't currently usable — e.g. a STRIPE
+        // order while card is still "coming soon", or a method the admin has
+        // kill-switched off. Never trust the client's selection.
+        storeSettingsService.assertPaymentMethodUsable(paymentMethod);
+
         Order order = Order.builder()
                 .user(user)
                 .customerName(req.customerName())
@@ -67,6 +75,11 @@ public class OrderService {
                 .total(BigDecimal.ZERO)
                 .status(OrderStatus.NEW)
                 .paymentMethod(paymentMethod)
+                // Card orders await Stripe confirmation; COD has nothing to
+                // collect online.
+                .paymentStatus(paymentMethod == PaymentMethod.STRIPE
+                        ? PaymentStatus.PENDING
+                        : PaymentStatus.NOT_REQUIRED)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -151,7 +164,12 @@ public class OrderService {
         // settings — never trust the client's number. Added on TOP of
         // the (already-discounted) total: discount cuts product cost,
         // shipping is a separate line.
-        BigDecimal shippingCost = storeSettingsService.computeShippingFor(itemsSubtotal);
+        // Resolve the chosen courier (404 unknown / 400 disabled), then
+        // price its rate against the global free-shipping threshold.
+        Courier courier = courierService.getSelectableCourier(req.courierId());
+        BigDecimal shippingCost =
+                storeSettingsService.applyFreeShipping(itemsSubtotal, courier.getPrice());
+        order.setShippingCourier(courier.getName());
         order.setShippingCost(shippingCost);
         total = total.add(shippingCost).setScale(2, RoundingMode.HALF_UP);
 
@@ -217,10 +235,12 @@ public class OrderService {
                 o.getZip(),
                 o.getTotal(),
                 o.getShippingCost() != null ? o.getShippingCost() : BigDecimal.ZERO,
+                o.getShippingCourier(),
                 o.getDiscountCode(),
                 o.getDiscountPercent(),
                 o.getStatus(),
                 o.getPaymentMethod(),
+                o.getPaymentStatus(),
                 items,
                 history
         );
@@ -233,6 +253,39 @@ public class OrderService {
                 .toList();
     }
 
+    /**
+     * Cancels a still-pending card order and returns its reserved stock.
+     * Idempotent — only acts while the order is PENDING, so the webhook and
+     * an explicit customer cancel can both call it without double-restocking.
+     */
+    @Transactional
+    public void cancelAndRestock(Long orderId) {
+        Order order = orderRepository.findByIdWithItems(orderId).orElse(null);
+        if (order == null || order.getPaymentStatus() != PaymentStatus.PENDING) {
+            return;
+        }
+        restock(order);
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setPaymentStatus(PaymentStatus.EXPIRED);
+        orderRepository.save(order);
+    }
+
+    /**
+     * Returns an order's reserved stock to the variants. Used when a card
+     * order's payment never completes (Stripe session expired) so the items
+     * become buyable again. Quietly skips products/variants no longer present.
+     */
+    @Transactional
+    public void restock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            productRepository.findByIdForOrder(item.getProductId()).ifPresent(p ->
+                    p.getVariants().stream()
+                            .filter(v -> v.getSize().equals(item.getSize()))
+                            .findFirst()
+                            .ifPresent(v -> v.setStock(v.getStock() + item.getQty())));
+        }
+    }
+
     @Transactional
     public OrderResponse updateStatus(Long id, OrderStatus status) {
         Order order = orderRepository.findByIdWithItems(id)
@@ -241,10 +294,21 @@ public class OrderService {
                         "Order not found"
                 ));
 
-        // Only append a history row on an actual transition. Stops the
-        // timeline from filling up with duplicates if the admin clicks
-        // "Save" on the same status twice.
+        // Only act on an actual transition. Stops the timeline filling up
+        // with duplicates (and stops double-restocking) if the admin sets
+        // the same status twice.
         if (order.getStatus() != status) {
+            // Cancelling returns the order's reserved stock to inventory.
+            // Covers unpaid card orders cancelled from the admin panel —
+            // including orphans that never got a Stripe session, which would
+            // otherwise never release their stock. The transition guard above
+            // ensures we never restock the same order twice.
+            if (status == OrderStatus.CANCELLED) {
+                restock(order);
+                if (order.getPaymentStatus() == PaymentStatus.PENDING) {
+                    order.setPaymentStatus(PaymentStatus.EXPIRED);
+                }
+            }
             order.setStatus(status);
             statusHistoryRepository.save(OrderStatusHistory.builder()
                     .orderId(order.getId())

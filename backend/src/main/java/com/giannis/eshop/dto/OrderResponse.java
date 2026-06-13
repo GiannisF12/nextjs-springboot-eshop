@@ -2,6 +2,7 @@ package com.giannis.eshop.dto;
 
 import com.giannis.eshop.model.OrderStatus;
 import com.giannis.eshop.model.PaymentMethod;
+import com.giannis.eshop.model.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -22,6 +23,8 @@ public record OrderResponse(
          * breakdown that lines up with what the customer paid.
          */
         BigDecimal shippingCost,
+        /** Courier name chosen at checkout, or null for legacy orders. */
+        String shippingCourier,
         /** Discount code applied at checkout, or null. */
         String discountCode,
         /** Percent-off snapshot at checkout, or null. */
@@ -29,6 +32,8 @@ public record OrderResponse(
         OrderStatus status,
         /** How the customer paid (COD or STRIPE). */
         PaymentMethod paymentMethod,
+        /** Payment state — NOT_REQUIRED (COD), PENDING, PAID, or EXPIRED. */
+        PaymentStatus paymentStatus,
         List<Item> items,
         /**
          * Timeline of status transitions, oldest first. Always contains at

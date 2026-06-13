@@ -19,6 +19,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     """)
     Optional<Order> findByIdWithItems(@Param("id") Long id);
 
+    /** Used by the Stripe webhook to find the order a session belongs to. */
+    @Query("""
+        select distinct o from Order o
+        left join fetch o.items
+        where o.stripeSessionId = :sessionId
+    """)
+    Optional<Order> findByStripeSessionId(@Param("sessionId") String sessionId);
+
     @Query("""
         select distinct o from Order o
         left join fetch o.items

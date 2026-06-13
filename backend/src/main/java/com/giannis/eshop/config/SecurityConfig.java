@@ -92,6 +92,16 @@ public class SecurityConfig {
 
                         // public browsing + uploaded images
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
+
+                        // Public read of enabled couriers — checkout needs
+                        // the list + prices. Admin management lives under
+                        // /api/admin/couriers, covered by the /api/admin/** rule.
+                        .requestMatchers(HttpMethod.GET, "/api/couriers").permitAll()
+
+                        // Card payments: starting a Checkout session and the
+                        // Stripe webhook are public — guests pay, and the
+                        // webhook is signature-verified in the service.
+                        .requestMatchers(HttpMethod.POST, "/api/payments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/images").hasRole("ADMIN")
 

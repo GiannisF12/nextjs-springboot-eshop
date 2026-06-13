@@ -32,13 +32,6 @@ public class StoreSettings {
     private Long id;
 
     /**
-     * Flat shipping fee charged on every order whose subtotal is below
-     * the free-shipping threshold. Stored as BigDecimal because money.
-     */
-    @Column(name = "shipping_flat_rate", nullable = false)
-    private BigDecimal shippingFlatRate;
-
-    /**
      * If the cart subtotal (before discount) reaches this number,
      * shipping drops to 0. A value of 0 means "always charge shipping",
      * which is also a valid configuration.
@@ -53,6 +46,20 @@ public class StoreSettings {
      */
     @Column(name = "low_stock_threshold", nullable = false)
     private Integer lowStockThreshold;
+
+    /** Admin toggle: offer cash-on-delivery at checkout. */
+    @Column(name = "cod_enabled", nullable = false)
+    @Builder.Default
+    private Boolean codEnabled = true;
+
+    /**
+     * Admin toggle: offer card payment at checkout. Only has an effect once
+     * card payments are actually available (eshop.payments.card-available);
+     * until then card shows as "Coming soon" regardless of this flag.
+     */
+    @Column(name = "card_enabled", nullable = false)
+    @Builder.Default
+    private Boolean cardEnabled = false;
 
     /** Bumped on every save — useful for cache busting later. */
     @Column(name = "updated_at", nullable = false)

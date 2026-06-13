@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { AuthProvider } from "@/features/auth/auth-context";
+import { CookieConsent } from "@/features/consent/cookie-consent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 richColors gives green/red variants for success/error
                 without us styling each call. */}
             <Toaster richColors position="bottom-right" />
+            <CookieConsent />
         </AuthProvider>
         </body>
         </html>

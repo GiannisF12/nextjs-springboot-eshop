@@ -99,6 +99,13 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Stripe Java SDK: hosted Checkout sessions + webhook verification -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>24.0.0</version>
+		</dependency>
+
 		<!-- ================================= -->
 		<!-- TEST ONLY                         -->
 		<!-- scope=test: excluded from the     -->
