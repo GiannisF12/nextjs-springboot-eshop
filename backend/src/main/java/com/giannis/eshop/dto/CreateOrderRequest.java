@@ -26,7 +26,13 @@ public record CreateOrderRequest(
          * yet from the UI, but the field accepts STRIPE so the contract
          * doesn't change when online payments ship.
          */
-        PaymentMethod paymentMethod
+        PaymentMethod paymentMethod,
+        /**
+         * Which courier the customer chose. Required — the server looks up
+         * the courier, validates it's enabled, and uses ITS price (the
+         * client's number is never trusted).
+         */
+        @NotNull Long courierId
 ) {
     public record Item(
             @NotNull Long productId,

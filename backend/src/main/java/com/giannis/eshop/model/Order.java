@@ -54,6 +54,14 @@ public class Order {
     private BigDecimal shippingCost = BigDecimal.ZERO;
 
     /**
+     * Snapshot of the courier name chosen at checkout. Null for legacy
+     * orders and for any non-courier path. Stored as a name (not an FK)
+     * so the order still reads correctly if a courier is later edited.
+     */
+    @Column(name = "shipping_courier", length = 100)
+    private String shippingCourier;
+
+    /**
      * Snapshot of the discount code applied at checkout. Null if none.
      * Stored so order history reads correctly even if the admin later
      * deletes the code from discount_codes.
@@ -80,6 +88,20 @@ public class Order {
     @Column(name = "payment_method", nullable = false, length = 16)
     @Builder.Default
     private PaymentMethod paymentMethod = PaymentMethod.COD;
+
+    /**
+     * Payment state. COD orders are NOT_REQUIRED (nothing to collect online);
+     * card orders go PENDING → PAID, or PENDING → EXPIRED if the Stripe
+     * session lapses unpaid.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 16)
+    @Builder.Default
+    private PaymentStatus paymentStatus = PaymentStatus.NOT_REQUIRED;
+
+    /** Stripe Checkout session id for a card order — how webhooks find it. */
+    @Column(name = "stripe_session_id", length = 255)
+    private String stripeSessionId;
 
     @PrePersist
     void onCreate() {

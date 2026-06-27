@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -89,6 +90,16 @@ public class AuthController {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "This account has been banned. Please contact support."
+            );
+        } catch (AuthenticationException e) {
+            // Wrong email/password (and any other auth failure that isn't a
+            // ban) → 401 with a generic message. Without this, the exception
+            // bubbles up to the security entry point, which returns 403 with
+            // formLogin/httpBasic disabled — making bad credentials look like
+            // a ban. Kept generic so we don't reveal whether the email exists.
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password."
             );
         }
 

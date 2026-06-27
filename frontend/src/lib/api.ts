@@ -187,6 +187,12 @@ export type CreateOrderItem = {
  */
 export type PaymentMethod = "COD" | "STRIPE";
 
+/**
+ * Where an order stands on payment. NOT_REQUIRED = COD (nothing to collect
+ * online); PENDING/PAID/EXPIRED track a card order through Stripe.
+ */
+export type PaymentStatus = "NOT_REQUIRED" | "PENDING" | "PAID" | "EXPIRED";
+
 export type CreateOrderRequest = {
     customerName: string;
     phone: string;
@@ -198,6 +204,8 @@ export type CreateOrderRequest = {
     discountCode?: string;
     /** Defaults to COD on the server if omitted. */
     paymentMethod?: PaymentMethod;
+    /** Required — id of the courier the customer chose at checkout. */
+    courierId: number;
 };
 
 export type OrderItem = {
@@ -240,6 +248,8 @@ export type OrderResponse = {
      * Total breakdown that lines up with what the customer paid.
      */
     shippingCost: number;
+    /** Courier name chosen at checkout, or null for legacy orders. */
+    shippingCourier: string | null;
     /** Discount code snapshot, if any was applied at checkout. */
     discountCode: string | null;
     /** Percent-off snapshot, if any was applied at checkout. */
@@ -247,6 +257,8 @@ export type OrderResponse = {
     status: OrderStatus;
     /** How the customer paid (COD or STRIPE). */
     paymentMethod: PaymentMethod;
+    /** Payment state — NOT_REQUIRED (COD), PENDING, PAID, or EXPIRED. */
+    paymentStatus: PaymentStatus;
     items: OrderItem[];
     statusHistory: OrderStatusChange[];
 };
@@ -256,6 +268,35 @@ export async function createOrder(payload: CreateOrderRequest): Promise<OrderRes
         method: "POST",
         body: JSON.stringify(payload),
     });
+}
+
+/**
+ * Starts a Stripe Checkout session for a pending card order and returns the
+ * hosted-payment URL to redirect to. The order must already exist.
+ */
+export async function createCheckoutSession(
+    orderId: number
+): Promise<{ url: string }> {
+    return apiFetch<{ url: string }>(
+        `/api/payments/${orderId}/checkout-session`,
+        { method: "POST" }
+    );
+}
+
+/**
+ * Releases a pending card order the customer abandoned on Stripe, so its
+ * reserved stock frees up immediately instead of after the 30-min expiry.
+ */
+export async function cancelCheckout(orderId: number): Promise<void> {
+    await apiFetch(`/api/payments/${orderId}/cancel`, { method: "POST" });
+}
+
+/**
+ * Reconciles a card order with Stripe when the customer returns to the
+ * success page, so a missed/late webhook self-heals the order to Paid.
+ */
+export async function syncPayment(orderId: number): Promise<void> {
+    await apiFetch(`/api/payments/${orderId}/sync`, { method: "POST" });
 }
 
 export async function getOrder(id: string): Promise<OrderResponse | null> {
@@ -578,13 +619,19 @@ export async function validateDiscountCode(
  * move out of code into the database (currency, store name, banner...).
  */
 export type StoreSettings = {
-    shippingFlatRate: number;
     freeShippingThreshold: number;
     /**
      * Stock at or below this number counts as "low stock" — used by the
      * admin dashboard widget. 0 disables the check.
      */
     lowStockThreshold: number;
+    /** Admin toggle: offer cash-on-delivery at checkout. */
+    codEnabled: boolean;
+    /** Admin toggle: offer card (effective only once cardAvailable). */
+    cardEnabled: boolean;
+    /** Whether card payments are wired up at all. When false, checkout
+     *  shows card as "Coming soon" regardless of cardEnabled. */
+    cardAvailable: boolean;
     /** ISO timestamp — when the row was last saved. */
     updatedAt: string;
 };
@@ -598,7 +645,10 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 export async function updateStoreSettings(
     payload: Pick<
         StoreSettings,
-        "shippingFlatRate" | "freeShippingThreshold" | "lowStockThreshold"
+        | "freeShippingThreshold"
+        | "lowStockThreshold"
+        | "codEnabled"
+        | "cardEnabled"
     >
 ): Promise<StoreSettings> {
     return apiFetch<StoreSettings>("/api/admin/settings", {
@@ -623,14 +673,45 @@ export async function getLowStockSummary(): Promise<LowStockSummary> {
     });
 }
 
+/* ----------------------------- Couriers ---------------------------- */
+
+export type Courier = {
+    id: number;
+    name: string;
+    price: number;
+    enabled: boolean;
+    sortOrder: number;
+};
+
+/** Public — enabled couriers for the checkout picker, in display order. */
+export async function getCouriers(): Promise<Courier[]> {
+    return apiFetch<Courier[]>("/api/couriers", { cache: "no-store" });
+}
+
+/** Admin only — every courier, in display order. */
+export async function getAdminCouriers(): Promise<Courier[]> {
+    return apiFetch<Courier[]>("/api/admin/couriers", { cache: "no-store" });
+}
+
+/** Admin only — update one courier's price + availability. */
+export async function updateCourier(
+    id: number,
+    payload: { price: number; enabled: boolean }
+): Promise<Courier> {
+    return apiFetch<Courier>(`/api/admin/couriers/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+    });
+}
+
 /**
- * Mirror of StoreSettingsService.computeShippingFor on the backend.
- * Used on the checkout page to preview shipping live as the cart
- * changes — the backend re-runs the same calculation server-side at
- * order creation, so this is just a UI hint, never the source of truth.
+ * Mirror of the backend shipping calc for a chosen courier: free when the
+ * cart clears the threshold, otherwise the courier's price. UI preview
+ * only — the backend recomputes server-side at order creation.
  */
-export function computeShipping(
+export function computeCourierShipping(
     subtotal: number,
+    courierPrice: number,
     settings: StoreSettings
 ): number {
     if (
@@ -639,5 +720,5 @@ export function computeShipping(
     ) {
         return 0;
     }
-    return settings.shippingFlatRate;
+    return courierPrice;
 }

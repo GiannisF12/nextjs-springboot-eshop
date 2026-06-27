@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookieSettingsButton } from "@/features/consent/cookie-settings-button";
 
 export function SiteFooter() {
     return (
@@ -47,6 +48,17 @@ export function SiteFooter() {
                                 >
                                     About Us
                                 </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/cookie-policy"
+                                    className="hover:text-white"
+                                >
+                                    Cookie Policy
+                                </Link>
+                            </li>
+                            <li>
+                                <CookieSettingsButton />
                             </li>
                         </ul>
                     </div>

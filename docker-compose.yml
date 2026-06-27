@@ -35,6 +35,12 @@ services:
       # Turn this OFF for production.
       ESHOP_SEED_DEMO_PRODUCTS: "true"
       ESHOP_CORS_ALLOWED_ORIGIN: "http://localhost:3000"
+      # Card payments (Stripe). Real values come from the gitignored root
+      # .env file. Card stays "Coming soon" until card-available is true.
+      ESHOP_PAYMENTS_CARD_AVAILABLE: "${ESHOP_PAYMENTS_CARD_AVAILABLE:-false}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      ESHOP_APP_BASE_URL: "${ESHOP_APP_BASE_URL:-http://localhost:3000}"
     ports:
       - "8080:8080"
     volumes:

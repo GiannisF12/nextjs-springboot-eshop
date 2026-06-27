@@ -6,6 +6,7 @@ import { DetailRow } from "@/components/detail-row";
 import { resolveImageUrl } from "@/lib/http";
 import {getOrder, OrderStatus, OrderStatusChange} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { PaymentReturnHandler } from "@/features/orders/payment-return-handler";
 
 function statusStyles(status: string) {
     switch (status) {
@@ -180,10 +181,13 @@ function StatusTimeline({
 
 type Props = {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function OrderPage({ params }: Props) {
+export default async function OrderPage({ params, searchParams }: Props) {
     const { id } = await params;
+    const { payment } = await searchParams;
+    const cancelled = payment === "cancelled";
 
     const order = await getOrder(id);
 
@@ -200,6 +204,13 @@ export default async function OrderPage({ params }: Props) {
 
     return (
         <div className="space-y-6">
+            <PaymentReturnHandler orderId={order.id} />
+            {cancelled && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    You cancelled the payment, so this order has been
+                    cancelled. Nothing was charged.
+                </div>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Order #{order.id}</h1>
@@ -212,10 +223,34 @@ export default async function OrderPage({ params }: Props) {
                                 ? "💶 Cash on delivery"
                                 : "💳 Card"}
                         </Badge>
+                        {order.paymentStatus !== "NOT_REQUIRED" && (
+                            <Badge
+                                variant="outline"
+                                className={
+                                    order.paymentStatus === "PAID"
+                                        ? "border-green-300 text-green-700"
+                                        : order.paymentStatus === "PENDING"
+                                          ? "border-amber-300 text-amber-700"
+                                          : "border-red-300 text-red-700"
+                                }
+                            >
+                                {order.paymentStatus === "PAID"
+                                    ? "Paid"
+                                    : order.paymentStatus === "PENDING"
+                                      ? "Awaiting payment"
+                                      : "Payment expired"}
+                            </Badge>
+                        )}
                         <span className="text-sm text-muted-foreground">
                             Created at <LocalTime iso={order.createdAt} />
                         </span>
                     </div>
+                    {order.paymentStatus === "PENDING" && !cancelled && (
+                        <p className="mt-2 text-xs text-amber-700">
+                            We&apos;re confirming your payment — this page will
+                            update shortly. You can refresh in a moment.
+                        </p>
+                    )}
                 </div>
 
                 <div className="text-right">
@@ -263,6 +298,12 @@ export default async function OrderPage({ params }: Props) {
                         />
                         <DetailRow label="City" value={order.city} />
                         <DetailRow label="Postal" value={order.zip} />
+                        {order.shippingCourier && (
+                            <DetailRow
+                                label="Courier"
+                                value={order.shippingCourier}
+                            />
+                        )}
                     </div>
                 </div>
 
